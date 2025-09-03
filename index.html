@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Каталог недвижимости — прототип</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;--card:#ffffff;--text:#0f172a;--muted:#64748b;
+      --accent:#2563eb;--ok:#16a34a;--bad:#dc2626;--border:#e5e7eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;}
+    .wrap{max-width:1024px;margin:0 auto;padding:16px}
+    h1{font-size:26px;margin:8px 0 4px}
+    .sub{color:var(--muted);margin:0 0 14px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 4px 18px rgba(0,0,0,.04)}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}
+    input,select,button,textarea{border:1px solid var(--border);border-radius:10px;padding:10px;font-size:14px;background:#fff;color:var(--text)}
+    input[type=number]{width:110px}
+    .btn{cursor:pointer}
+    .btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
+    .btn-ghost{background:#fff;color:var(--text)}
+    .btn-danger{background:#fff;color:var(--bad);border-color:#fecaca}
+    .grid{display:grid;gap:10px}
+    @media(min-width:860px){.grid-2{grid-template-columns:1.2fr .8fr}}
+    .list{display:grid;gap:10px}
+    .item{display:grid;gap:8px;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+    .hdr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
+    .muted{color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted);margin-top:-6px}
+    .checkgroup{display:flex;flex-wrap:wrap;gap:8px}
+    .checkgroup label{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;background:#fff;cursor:pointer}
+    .checkgroup input{margin:0}
+    .section-title{font-weight:700;margin:8px 0}
+    .empty{color:var(--muted);padding:10px}
+    .footer{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .danger{color:var(--bad)}
+    .ok{color:var(--ok)}
+    .price{font-weight:800}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <h1>🏠 Каталог недвижимости (прототип)</h1>
+      <div class="sub">Простой поиск по твоим объектам. Данные хранятся локально в браузере.</div>
+    </div>
+    <div class="footer">
+      <button class="btn btn-ghost" onclick="exportJSON()">Экспорт</button>
+      <label class="btn btn-ghost" style="cursor:pointer">Импорт
+        <input type="file" accept="application/json" onchange="importJSON(event)" style="display:none">
+      </label>
+      <button class="btn btn-danger" onclick="wipe()">Сброс</button>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Фильтры -->
+    <div class="card">
+      <div class="section-title">Фильтр</div>
+      <div class="row">
+        <div>
+          <label>Тип</label>
+          <select id="f_type">
+            <option value="">Любой</option>
+            <option value="flat">Квартира</option>
+            <option value="house">Дом</option>
+            <option value="land">Земля</option>
+          </select>
+        </div>
+        <div>
+          <label>Статус</label>
+          <select id="f_status">
+            <option value="">Любой</option>
+            <option value="sale">Продаётся</option>
+            <option value="rent">Аренда</option>
+          </select>
+        </div>
+        <div>
+          <label>Цена до ($)</label>
+          <input id="f_price_to" type="number" min="0" placeholder="например 120000">
+        </div>
+        <div>
+          <label>Площадь от (м²)</label>
+          <input id="f_area_from" type="number" min="0" placeholder="например 60">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Комнат (кв.)</label>
+          <select id="f_rooms">
+            <option value="">Любые</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option value="5+">5+</option>
+          </select>
+        </div>
+        <div>
+          <label>Этаж (кв.)</label>
+          <input id="f_floor" type="number" min="1">
+        </div>
+        <div>
+          <label>Этажность ≤ (кв.)</label>
+          <input id="f_floors_max" type="number" min="1">
+        </div>
+      </div>
+
+      <div class="section-title">Районы (можно несколько)</div>
+      <div class="checkgroup" id="f_districts"></div>
+      <div class="hint">Если ничего не выбрано — показываются все районы.</div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-primary" onclick="apply()">Применить</button>
+        <button class="btn btn-ghost" onclick="resetFilters()">Сбросить фильтр</button>
+      </div>
+    </div>
+
+    <!-- Добавление объекта -->
+    <div class="card">
+      <div class="section-title">Добавить объект (админка)</div>
+      <div class="row">
+        <div>
+          <label>Тип</label>
+          <select id="a_type">
+            <option value="flat">Квартира</option>
+            <option value="house">Дом</option>
+            <option value="land">Земля</option>
+          </select>
+        </div>
+        <div>
+          <label>Статус</label>
+          <select id="a_status">
+            <option value="sale">Продаётся</option>
+            <option value="rent">Аренда</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label>Заголовок</label>
+          <input id="a_title" placeholder="Например: 4-комн, Юнусабад 9, ремонт"/>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Район</label><select id="a_district"></select></div>
+        <div><label>Квартал/махаля</label><input id="a_quarter" placeholder="например 9"/></div>
+        <div><label>Цена ($)</label><input id="a_price" type="number" min="0"/></div>
+        <div><label>Площадь (м²)</label><input id="a_area" type="number" min="0"/></div>
+      </div>
+      <div class="row">
+        <div><label>Комнат (кв.)</label><input id="a_rooms" type="number" min="0"/></div>
+        <div><label>Этаж (кв.)</label><input id="a_floor" type="number" min="0"/></div>
+        <div><label>Этажность (кв.)</label><input id="a_floors" type="number" min="0"/></div>
+      </div>
+      <div class="row">
+        <div style="flex:1"><label>Описание</label><textarea id="a_desc" rows="3" placeholder="Ключевые плюсы, что рядом"></textarea></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="addObject()">Добавить</button>
+        <button class="btn btn-ghost" onclick="demo()">Демо-данные</button>
+        <button class="btn btn-danger" onclick="clearObjects()">Очистить объекты</button>
+      </div>
+      <div class="hint">Все объекты сохраняются в этом браузере (localStorage).</div>
+    </div>
+  </div>
+
+  <!-- Результаты -->
+  <div class="card">
+    <div class="hdr">
+      <div class="section-title">Результаты</div>
+      <div class="muted">Найдено: <span id="count">0</span></div>
+    </div>
+    <div id="results" class="list"></div>
+    <div id="empty" class="empty" style="display:none">Ничего не найдено.</div>
+  </div>
+</div>
+
+<script>
+  const DISTRICTS = ["Юнусабад","Мирзо-Улугбек","Чиланзар","Шайхантахур","Яккасарай","Учтепа","Сергелийский","Алмазар","Бектемир","Мирабад","Яшнабад"];
+  const LS_KEY = "realty_objects_v1";
+
+  /** @type {Array<Object>} */
+  let objects = [];
+
+  // UI helpers
+  const $ = (id)=>document.getElementById(id);
+  function el(tag, attrs={}, html=""){
+    const e=document.createElement(tag);
+    for(const k in attrs){ if(k==='class') e.className=attrs[k]; else e.setAttribute(k, attrs[k]); }
+    if(html) e.innerHTML=html;
+    return e;
+  }
+
+  // Init districts checkboxes & selects
+  function initDistricts(){
+    const box = $("f_districts");
+    box.innerHTML = "";
+    DISTRICTS.forEach((d,i)=>{
+      const id = "d_"+i;
+      const label = el("label");
+      const input = el("input",{type:"checkbox", id});
+      const span = el("span",{}, d);
+      label.appendChild(input); label.appendChild(span);
+      box.appendChild(label);
+    });
+    const aSel = $("a_district");
+    aSel.innerHTML = "";
+    DISTRICTS.forEach(d=>{
+      const opt = el("option",{}, d);
+      opt.value = d;
+      aSel.appendChild(opt);
+    });
+  }
+
+  function load(){
+    try{ const raw = localStorage.getItem(LS_KEY); objects = raw ? JSON.parse(raw) : []; }
+    catch(e){ objects = [] }
+  }
+  function save(){
+    localStorage.setItem(LS_KEY, JSON.stringify(objects));
+  }
+
+  function render(list = objects){
+    const res = $("results");
+    const empty = $("empty");
+    res.innerHTML = "";
+    $("count").textContent = String(list.length);
+    if(list.length===0){ empty.style.display='block'; return } else empty.style.display='none';
+    list.forEach(o=>{
+      const it = el("div",{class:"item"});
+      const head = el("div",{class:"row"});
+      head.innerHTML = `
+        <div class="pill">${typeLabel(o.type)}</div>
+        <div class="pill">${statusLabel(o.status)}</div>
+        <div class="pill">${o.district}${o.quarter?(", кв./махаля: "+escapeHTML(o.quarter)):""}</div>
+        ${o.type==='flat' && o.rooms ? `<div class="pill">${o.rooms} комн</div>` : ""}
+        ${o.type==='flat' && (o.floor||o.floors) ? `<div class="pill">этаж ${o.floor||"-"}/${o.floors||"-"}</div>` : ""}
+      `;
+      const title = el("div",{class:"section-title"}, escapeHTML(o.title||"Без названия"));
+      const meta = el("div",{class:"muted"}, `Площадь: ${o.area?o.area+" м²":"—"} • <span class="price">${o.price?money(o.price):"Цена не указана"}</span>`);
+      const desc = el("div",{}, escapeHTML(o.desc||""));
+      const actions = el("div",{class:"footer"});
+      const del = el("button",{class:"btn btn-danger"}, "Удалить");
+      del.onclick = ()=>{ objects = objects.filter(x=>x.id!==o.id); save(); apply(); };
+      actions.appendChild(del);
+
+      it.appendChild(head);
+      it.appendChild(title);
+      it.appendChild(meta);
+      if(o.desc) it.appendChild(desc);
+      it.appendChild(actions);
+      res.appendChild(it);
+    });
+  }
+
+  function typeLabel(t){ return t==='flat'?'Квартира':t==='house'?'Дом':t==='land'?'Земля':'—' }
+  function statusLabel(s){ return s==='sale'?'Продаётся':s==='rent'?'Аренда':'—' }
+  function money(n){ return new Intl.NumberFormat('ru-RU',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n) }
+  function escapeHTML(s){ return s.replace(/[&<>\"']/g, m=>({\"&\":\"&amp;\",\"<\":\"&lt;\",\">\":\"&gt;\",\"\\\"\":\"&quot;\",\"'\":\"&#039;\"}[m])) }
+
+  function apply(){
+    const type = $("f_type").value;
+    const status = $("f_status").value;
+    const price_to = parseFloat($("f_price_to").value);
+    const area_from = parseFloat($("f_area_from").value);
+    const rooms = $("f_rooms").value;
+    const floor = parseInt($("f_floor").value);
+    const floors_max = parseInt($("f_floors_max").value);
+    // districts
+    const chosen = Array.from($("f_districts").querySelectorAll("input[type=checkbox]"))
+      .filter(cb=>cb.checked).map((cb,i)=>DISTRICTS[i]);
+
+    let list = objects.filter(o=>{
+      if(type && o.type!==type) return false;
+      if(status && o.status!==status) return false;
+      if(!isNaN(price_to) && o.price && o.price>price_to) return false;
+      if(!isNaN(area_from) && o.area && o.area<area_from) return false;
+      if(type==='flat'){
+        if(rooms){ if(rooms==='5+' && (!o.rooms || o.rooms<5)) return false; if(rooms!=='5+' && o.rooms !== parseInt(rooms)) return false; }
+        if(!isNaN(floor) && o.floor !== floor) return false;
+        if(!isNaN(floors_max) && o.floors && o.floors>floors_max) return false;
+      }
+      if(chosen.length>0 && !chosen.includes(o.district)) return false;
+      return true;
+    });
+    render(list);
+  }
+
+  function resetFilters(){
+    ["f_type","f_status","f_price_to","f_area_from","f_rooms","f_floor","f_floors_max"].forEach(id=>{$(id).value=""});
+    $("f_districts").querySelectorAll("input[type=checkbox]").forEach(cb=>cb.checked=false);
+    render(objects);
+  }
+
+  function addObject(){
+    const o = {
+      id: String(Date.now()),
+      type: $("a_type").value,
+      status: $("a_status").value,
+      title: $("a_title").value.trim(),
+      district: $("a_district").value,
+      quarter: $("a_quarter").value.trim(),
+      price: parseFloat($("a_price").value)||0,
+      area: parseFloat($("a_area").value)||0,
+      rooms: parseInt($("a_rooms").value)||0,
+      floor: parseInt($("a_floor").value)||0,
+      floors: parseInt($("a_floors").value)||0,
+      desc: $("a_desc").value.trim()
+    };
+    objects.push(o); save(); apply(); clearAddForm();
+  }
+
+  function clearAddForm(){
+    ["a_title","a_quarter","a_price","a_area","a_rooms","a_floor","a_floors","a_desc"].forEach(id=>{$(id).value=""});
+  }
+
+  function clearObjects(){
+    if(!confirm("Точно удалить все объекты?")) return;
+    objects = []; save(); render();
+  }
+
+  function exportJSON(){
+    const data = JSON.stringify(objects,null,2);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([data],{type:"application/json"}));
+    a.download = "realty_backup.json";
+    a.click();
+  }
+  function importJSON(e){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{ const arr = JSON.parse(reader.result); if(Array.isArray(arr)){ objects = arr; save(); apply(); alert("Импортировано"); } }
+      catch(_){ alert("Ошибка формата файла"); }
+    };
+    reader.readAsText(file);
+  }
+  function wipe(){
+    if(!confirm("Сбросить всё (объекты и фильтры)?")) return;
+    localStorage.removeItem(LS_KEY); objects=[]; init(); render();
+  }
+
+  function demo(){
+    if(objects.length>0) return;
+    objects = [
+      {id:"1", type:"flat", status:"sale", title:"5-комн, Юнусабад 9, ремонт", district:"Юнусабад", quarter:"9", price:120000, area:106, rooms:5, floor:3, floors:4, desc:"Банковская планировка, 2 санузла, парковка"},
+      {id:"2", type:"flat", status:"rent", title:"2-комн, Мирабад 5", district:"Мирабад", quarter:"5", price:600, area:65, rooms:2, floor:5, floors:9, desc:"Светлая, рядом школа и метро"},
+      {id:"3", type:"house", status:"sale", title:"Дом, Учтепа, 4 сотки", district:"Учтепа", quarter:"", price:95000, area:120, rooms:4, desc:"Можно жить, кирпич, двор"},
+      {id:"4", type:"land", status:"sale", title:"Земельный участок 6 соток", district:"Алмазар", quarter:"", price:70000, area:600, desc:"Под строительство, коммуникации рядом"},
+      {id:"5", type:"flat", status:"sale", title:"3-комн, Чиланзар 12", district:"Чиланзар", quarter:"12", price:78000, area:80, rooms:3, floor:2, floors:3, desc:"Тихий двор, тёплая"},
+    ];
+    save(); apply();
+  }
+
+  function init(){
+    initDistricts();
+    load();
+    if(objects.length===0) demo(); else apply();
+  }
+
+  init();
+</script>
+</body>
+</html>
