@@ -18,7 +18,7 @@
     .row{display:flex;gap:10px;flex-wrap:wrap}
     label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}
     input,select,button,textarea{border:1px solid var(--border);border-radius:10px;padding:10px;font-size:14px;background:#fff;color:var(--text)}
-    input[type=number]{width:110px}
+    input[type=number]{width:120px}
     .btn{cursor:pointer}
     .btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
     .btn-ghost{background:#fff;color:var(--text)}
@@ -38,6 +38,7 @@
     .empty{color:var(--muted);padding:10px}
     .footer{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .price{font-weight:800}
+    .thumb{width:100%;max-width:220px;height:140px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
   </style>
 </head>
 <body>
@@ -45,7 +46,7 @@
   <div class="hdr">
     <div>
       <h1>🏠 Каталог недвижимости (прототип)</h1>
-      <div class="sub">Простой поиск по твоим объектам. Данные хранятся локально в браузере.</div>
+      <div class="sub">Поиск по твоим объектам. Данные локально (localStorage).</div>
     </div>
     <div class="footer">
       <button class="btn btn-ghost" id="btnExport">Экспорт</button>
@@ -60,6 +61,7 @@
     <!-- Фильтры -->
     <div class="card">
       <div class="section-title">Фильтр</div>
+
       <div class="row">
         <div>
           <label>Тип</label>
@@ -78,32 +80,60 @@
             <option value="rent">Аренда</option>
           </select>
         </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Цена от ($)</label>
+          <input id="f_price_from" type="number" min="0" placeholder="например 50000">
+        </div>
         <div>
           <label>Цена до ($)</label>
           <input id="f_price_to" type="number" min="0" placeholder="например 120000">
-        </div>
-        <div>
-          <label>Площадь от (м²)</label>
-          <input id="f_area_from" type="number" min="0" placeholder="например 60">
         </div>
       </div>
 
       <div class="row">
         <div>
-          <label>Комнат (кв.)</label>
-          <select id="f_rooms">
-            <option value="">Любые</option>
-            <option>1</option><option>2</option><option>3</option><option>4</option>
-            <option>5</option><option value="5+">5+</option>
-          </select>
+          <label>Площадь от (м²)</label>
+          <input id="f_area_from" type="number" min="0" placeholder="например 60">
         </div>
         <div>
-          <label>Этаж (кв.)</label>
-          <input id="f_floor" type="number" min="1">
+          <label>Площадь до (м²)</label>
+          <input id="f_area_to" type="number" min="0" placeholder="например 120">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Комнат от (кв.)</label>
+          <input id="f_rooms_from" type="number" min="1">
         </div>
         <div>
-          <label>Этажность ≤ (кв.)</label>
-          <input id="f_floors_max" type="number" min="1">
+          <label>Комнат до (кв.)</label>
+          <input id="f_rooms_to" type="number" min="1">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Этаж от (кв.)</label>
+          <input id="f_floor_from" type="number" min="1">
+        </div>
+        <div>
+          <label>Этаж до (кв.)</label>
+          <input id="f_floor_to" type="number" min="1">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Этажность от (кв.)</label>
+          <input id="f_floors_from" type="number" min="1">
+        </div>
+        <div>
+          <label>Этажность до (кв.)</label>
+          <input id="f_floors_to" type="number" min="1">
         </div>
       </div>
 
@@ -153,6 +183,10 @@
         <div><label>Этажность (кв.)</label><input id="a_floors" type="number" min="0"/></div>
       </div>
       <div class="row">
+        <div style="flex:1"><label>Фото (URL, через запятую)</label>
+          <input id="a_photos" placeholder="https://.../1.jpg, https://.../2.jpg"/></div>
+      </div>
+      <div class="row">
         <div style="flex:1"><label>Описание</label>
           <textarea id="a_desc" rows="3" placeholder="Ключевые плюсы, что рядом"></textarea></div>
       </div>
@@ -161,7 +195,7 @@
         <button class="btn btn-ghost" id="btnDemo">Демо-данные</button>
         <button class="btn btn-danger" id="btnClearObjects">Очистить объекты</button>
       </div>
-      <div class="hint">Все объекты сохраняются в этом браузере (localStorage).</div>
+      <div class="hint">Фото пока по ссылкам. Потом сделаем загрузку и хранение (GitHub images или Cloudinary).</div>
     </div>
   </div>
 
@@ -195,8 +229,7 @@
   const escapeHTML = s => s.replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 
   function initDistricts(){
-    const box = $("f_districts");
-    box.innerHTML = "";
+    const box = $("f_districts"); box.innerHTML = "";
     DISTRICTS.forEach((d)=>{
       const label = el("label");
       const input = el("input",{type:"checkbox","data-district":d});
@@ -204,11 +237,8 @@
       label.appendChild(input); label.appendChild(span);
       box.appendChild(label);
     });
-    const aSel = $("a_district");
-    aSel.innerHTML = "";
-    DISTRICTS.forEach(d=>{
-      const opt = el("option",{}, d); opt.value=d; aSel.appendChild(opt);
-    });
+    const aSel = $("a_district"); aSel.innerHTML = "";
+    DISTRICTS.forEach(d=>{ const opt = el("option",{}, d); opt.value=d; aSel.appendChild(opt); });
   }
 
   function load(){ try{ objects = JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch(_){ objects=[] } }
@@ -231,6 +261,7 @@
       `;
       const title = el("div",{class:"section-title"}, escapeHTML(o.title||"Без названия"));
       const meta = el("div",{class:"muted"}, `Площадь: ${o.area?o.area+" м²":"—"} • <span class="price">${o.price?money(o.price):"Цена не указана"}</span>`);
+      const media = (o.photos && o.photos.length) ? el("img",{class:"thumb",src:o.photos[0],alt:"photo"}) : null;
       const desc = o.desc? el("div",{}, escapeHTML(o.desc)) : null;
       const actions = el("div",{class:"footer"});
       const del = el("button",{class:"btn btn-danger"}, "Удалить");
@@ -239,6 +270,7 @@
 
       it.appendChild(head);
       it.appendChild(title);
+      if(media) it.appendChild(media);
       it.appendChild(meta);
       if(desc) it.appendChild(desc);
       it.appendChild(actions);
@@ -249,25 +281,39 @@
   function apply(){
     const type = $("f_type").value;
     const status = $("f_status").value;
-    const price_to = parseFloat($("f_price_to").value);
-    const area_from = parseFloat($("f_area_from").value);
-    const rooms = $("f_rooms").value;
-    const floor = parseInt($("f_floor").value);
-    const floors_max = parseInt($("f_floors_max").value);
+
+    const price_from = parseFloat($("f_price_from").value);
+    const price_to   = parseFloat($("f_price_to").value);
+    const area_from  = parseFloat($("f_area_from").value);
+    const area_to    = parseFloat($("f_area_to").value);
+
+    const rooms_from = parseInt($("f_rooms_from").value);
+    const rooms_to   = parseInt($("f_rooms_to").value);
+    const floor_from = parseInt($("f_floor_from").value);
+    const floor_to   = parseInt($("f_floor_to").value);
+    const floors_from= parseInt($("f_floors_from").value);
+    const floors_to  = parseInt($("f_floors_to").value);
+
     const chosen = Array.from($("f_districts").querySelectorAll("input[type=checkbox]:checked"))
       .map(cb=>cb.getAttribute("data-district"));
 
     const list = objects.filter(o=>{
       if(type && o.type!==type) return false;
       if(status && o.status!==status) return false;
-      if(!isNaN(price_to) && o.price && o.price>price_to) return false;
-      if(!isNaN(area_from) && o.area && o.area<area_from) return false;
+      if(!isNaN(price_from) && o.price && o.price<price_from) return false;
+      if(!isNaN(price_to)   && o.price && o.price>price_to)   return false;
+      if(!isNaN(area_from)  && o.area  && o.area<area_from)   return false;
+      if(!isNaN(area_to)    && o.area  && o.area>area_to)     return false;
+
       if(o.type==='flat'){
-        if(rooms){ if(rooms==='5+' && (!o.rooms || o.rooms<5)) return false;
-                   if(rooms!=='5+' && o.rooms !== parseInt(rooms)) return false; }
-        if(!isNaN(floor) && o.floor !== floor) return false;
-        if(!isNaN(floors_max) && o.floors && o.floors>floors_max) return false;
+        if(!isNaN(rooms_from) && o.rooms && o.rooms<rooms_from) return false;
+        if(!isNaN(rooms_to)   && o.rooms && o.rooms>rooms_to)   return false;
+        if(!isNaN(floor_from) && o.floor && o.floor<floor_from) return false;
+        if(!isNaN(floor_to)   && o.floor && o.floor>floor_to)   return false;
+        if(!isNaN(floors_from)&& o.floors&& o.floors<floors_from) return false;
+        if(!isNaN(floors_to)  && o.floors&& o.floors>floors_to)   return false;
       }
+
       if(chosen.length>0 && !chosen.includes(o.district)) return false;
       return true;
     });
@@ -275,12 +321,17 @@
   }
 
   function resetFilters(){
-    ["f_type","f_status","f_price_to","f_area_from","f_rooms","f_floor","f_floors_max"].forEach(id=>{$(id).value="";});
+    ["f_type","f_status","f_price_from","f_price_to","f_area_from","f_area_to",
+     "f_rooms_from","f_rooms_to","f_floor_from","f_floor_to","f_floors_from","f_floors_to"]
+     .forEach(id=>{$(id).value="";});
     $("f_districts").querySelectorAll("input[type=checkbox]").forEach(cb=>cb.checked=false);
     render(objects);
   }
 
   function addObject(){
+    const photosRaw = $("a_photos").value.trim();
+    const photos = photosRaw ? photosRaw.split(",").map(s=>s.trim()).filter(Boolean) : [];
+
     const o = {
       id: String(Date.now()),
       type: $("a_type").value,
@@ -293,10 +344,11 @@
       rooms: parseInt($("a_rooms").value)||0,
       floor: parseInt($("a_floor").value)||0,
       floors: parseInt($("a_floors").value)||0,
+      photos,
       desc: $("a_desc").value.trim()
     };
     objects.push(o); save(); apply();
-    ["a_title","a_quarter","a_price","a_area","a_rooms","a_floor","a_floors","a_desc"].forEach(id=>{$(id).value="";});
+    ["a_title","a_quarter","a_price","a_area","a_rooms","a_floor","a_floors","a_photos","a_desc"].forEach(id=>{$(id).value="";});
   }
 
   function clearObjects(){
@@ -337,16 +389,15 @@
   function demo(){
     if(objects.length>0) return;
     objects = [
-      {id:"1", type:"flat", status:"sale", title:"5-комн, Юнусабад 9, ремонт", district:"Юнусабад", quarter:"9", price:120000, area:106, rooms:5, floor:3, floors:4, desc:"Банковская планировка, 2 санузла, парковка"},
-      {id:"2", type:"flat", status:"rent", title:"2-комн, Мирабад 5", district:"Мирабад", quarter:"5", price:600, area:65, rooms:2, floor:5, floors:9, desc:"Светлая, рядом школа и метро"},
-      {id:"3", type:"house", status:"sale", title:"Дом, Учтепа, 4 сотки", district:"Учтепа", quarter:"", price:95000, area:120, rooms:4, desc:"Можно жить, кирпич, двор"},
-      {id:"4", type:"land", status:"sale", title:"Земельный участок 6 соток", district:"Алмазар", quarter:"", price:70000, area:600, desc:"Под строительство, коммуникации рядом"},
-      {id:"5", type:"flat", status:"sale", title:"3-комн, Чиланзар 12", district:"Чиланзар", quarter:"12", price:78000, area:80, rooms:3, floor:2, floors:3, desc:"Тихий двор, тёплая"}
+      {id:"1", type:"flat", status:"sale", title:"5-комн, Юнусабад 9, ремонт", district:"Юнусабад", quarter:"9", price:120000, area:106, rooms:5, floor:3, floors:4, photos:["https://picsum.photos/seed/a/600/400"], desc:"Банковская планировка, 2 санузла, парковка"},
+      {id:"2", type:"flat", status:"rent", title:"2-комн, Мирабад 5", district:"Мирабад", quarter:"5", price:600, area:65, rooms:2, floor:5, floors:9, photos:["https://picsum.photos/seed/b/600/400"], desc:"Светлая, рядом школа и метро"},
+      {id:"3", type:"house", status:"sale", title:"Дом, Учтепа, 4 сотки", district:"Учтепа", quarter:"", price:95000, area:120, rooms:4, photos:["https://picsum.photos/seed/c/600/400"], desc:"Можно жить, кирпич, двор"},
+      {id:"4", type:"land", status:"sale", title:"Участок 6 соток", district:"Алмазар", quarter:"", price:70000, area:600, photos:["https://picsum.photos/seed/d/600/400"], desc:"Под строительство, коммуникации рядом"},
+      {id:"5", type:"flat", status:"sale", title:"3-комн, Чиланзар 12", district:"Чиланзар", quarter:"12", price:78000, area:80, rooms:3, floor:2, floors:3, photos:["https://picsum.photos/seed/e/600/400"], desc:"Тихий двор, тёплая"}
     ];
     save(); apply();
   }
 
-  // Привязка событий после загрузки DOM
   document.addEventListener("DOMContentLoaded", ()=>{
     initDistricts();
     load();
@@ -360,7 +411,7 @@
     $("btnClearObjects").addEventListener("click", clearObjects);
 
     $("btnExport").addEventListener("click", exportJSON);
-    $("fileImport").addEventListener("change", (e)=>{ if(e.target.files[0]) importJSON(e.target.files[0]); });
+    $("fileImport").addEventListener("change", e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); });
     $("btnWipe").addEventListener("click", wipe);
   });
 })();
