@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Каталог недвижимости — прототип</title>
   <style>
     :root{
@@ -37,8 +37,6 @@
     .section-title{font-weight:700;margin:8px 0}
     .empty{color:var(--muted);padding:10px}
     .footer{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .danger{color:var(--bad)}
-    .ok{color:var(--ok)}
     .price{font-weight:800}
   </style>
 </head>
@@ -50,11 +48,11 @@
       <div class="sub">Простой поиск по твоим объектам. Данные хранятся локально в браузере.</div>
     </div>
     <div class="footer">
-      <button class="btn btn-ghost" onclick="exportJSON()">Экспорт</button>
+      <button class="btn btn-ghost" id="btnExport">Экспорт</button>
       <label class="btn btn-ghost" style="cursor:pointer">Импорт
-        <input type="file" accept="application/json" onchange="importJSON(event)" style="display:none">
+        <input type="file" accept="application/json" id="fileImport" style="display:none">
       </label>
-      <button class="btn btn-danger" onclick="wipe()">Сброс</button>
+      <button class="btn btn-danger" id="btnWipe">Сброс</button>
     </div>
   </div>
 
@@ -95,7 +93,8 @@
           <label>Комнат (кв.)</label>
           <select id="f_rooms">
             <option value="">Любые</option>
-            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option value="5+">5+</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+            <option>5</option><option value="5+">5+</option>
           </select>
         </div>
         <div>
@@ -113,8 +112,8 @@
       <div class="hint">Если ничего не выбрано — показываются все районы.</div>
 
       <div class="row" style="margin-top:10px">
-        <button class="btn btn-primary" onclick="apply()">Применить</button>
-        <button class="btn btn-ghost" onclick="resetFilters()">Сбросить фильтр</button>
+        <button class="btn btn-primary" id="btnApply">Применить</button>
+        <button class="btn btn-ghost" id="btnResetFilters">Сбросить фильтр</button>
       </div>
     </div>
 
@@ -154,12 +153,13 @@
         <div><label>Этажность (кв.)</label><input id="a_floors" type="number" min="0"/></div>
       </div>
       <div class="row">
-        <div style="flex:1"><label>Описание</label><textarea id="a_desc" rows="3" placeholder="Ключевые плюсы, что рядом"></textarea></div>
+        <div style="flex:1"><label>Описание</label>
+          <textarea id="a_desc" rows="3" placeholder="Ключевые плюсы, что рядом"></textarea></div>
       </div>
       <div class="row">
-        <button class="btn btn-primary" onclick="addObject()">Добавить</button>
-        <button class="btn btn-ghost" onclick="demo()">Демо-данные</button>
-        <button class="btn btn-danger" onclick="clearObjects()">Очистить объекты</button>
+        <button class="btn btn-primary" id="btnAdd">Добавить</button>
+        <button class="btn btn-ghost" id="btnDemo">Демо-данные</button>
+        <button class="btn btn-danger" id="btnClearObjects">Очистить объекты</button>
       </div>
       <div class="hint">Все объекты сохраняются в этом браузере (localStorage).</div>
     </div>
@@ -177,29 +177,29 @@
 </div>
 
 <script>
+(function(){
   const DISTRICTS = ["Юнусабад","Мирзо-Улугбек","Чиланзар","Шайхантахур","Яккасарай","Учтепа","Сергелийский","Алмазар","Бектемир","Мирабад","Яшнабад"];
   const LS_KEY = "realty_objects_v1";
-
-  /** @type {Array<Object>} */
   let objects = [];
 
-  // UI helpers
-  const $ = (id)=>document.getElementById(id);
-  function el(tag, attrs={}, html=""){
+  const $ = id => document.getElementById(id);
+  const el = (tag, attrs={}, html="")=>{
     const e=document.createElement(tag);
     for(const k in attrs){ if(k==='class') e.className=attrs[k]; else e.setAttribute(k, attrs[k]); }
     if(html) e.innerHTML=html;
     return e;
-  }
+  };
+  const typeLabel = t => t==='flat'?'Квартира':t==='house'?'Дом':t==='land'?'Земля':'—';
+  const statusLabel = s => s==='sale'?'Продаётся':s==='rent'?'Аренда':'—';
+  const money = n => new Intl.NumberFormat('ru-RU',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);
+  const escapeHTML = s => s.replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 
-  // Init districts checkboxes & selects
   function initDistricts(){
     const box = $("f_districts");
     box.innerHTML = "";
-    DISTRICTS.forEach((d,i)=>{
-      const id = "d_"+i;
+    DISTRICTS.forEach((d)=>{
       const label = el("label");
-      const input = el("input",{type:"checkbox", id});
+      const input = el("input",{type:"checkbox","data-district":d});
       const span = el("span",{}, d);
       label.appendChild(input); label.appendChild(span);
       box.appendChild(label);
@@ -207,26 +207,18 @@
     const aSel = $("a_district");
     aSel.innerHTML = "";
     DISTRICTS.forEach(d=>{
-      const opt = el("option",{}, d);
-      opt.value = d;
-      aSel.appendChild(opt);
+      const opt = el("option",{}, d); opt.value=d; aSel.appendChild(opt);
     });
   }
 
-  function load(){
-    try{ const raw = localStorage.getItem(LS_KEY); objects = raw ? JSON.parse(raw) : []; }
-    catch(e){ objects = [] }
-  }
-  function save(){
-    localStorage.setItem(LS_KEY, JSON.stringify(objects));
-  }
+  function load(){ try{ objects = JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch(_){ objects=[] } }
+  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(objects)); }
 
   function render(list = objects){
-    const res = $("results");
-    const empty = $("empty");
+    const res = $("results"), empty = $("empty");
     res.innerHTML = "";
     $("count").textContent = String(list.length);
-    if(list.length===0){ empty.style.display='block'; return } else empty.style.display='none';
+    empty.style.display = list.length ? "none" : "block";
     list.forEach(o=>{
       const it = el("div",{class:"item"});
       const head = el("div",{class:"row"});
@@ -239,25 +231,20 @@
       `;
       const title = el("div",{class:"section-title"}, escapeHTML(o.title||"Без названия"));
       const meta = el("div",{class:"muted"}, `Площадь: ${o.area?o.area+" м²":"—"} • <span class="price">${o.price?money(o.price):"Цена не указана"}</span>`);
-      const desc = el("div",{}, escapeHTML(o.desc||""));
+      const desc = o.desc? el("div",{}, escapeHTML(o.desc)) : null;
       const actions = el("div",{class:"footer"});
       const del = el("button",{class:"btn btn-danger"}, "Удалить");
-      del.onclick = ()=>{ objects = objects.filter(x=>x.id!==o.id); save(); apply(); };
+      del.addEventListener("click", ()=>{ objects = objects.filter(x=>x.id!==o.id); save(); apply(); });
       actions.appendChild(del);
 
       it.appendChild(head);
       it.appendChild(title);
       it.appendChild(meta);
-      if(o.desc) it.appendChild(desc);
+      if(desc) it.appendChild(desc);
       it.appendChild(actions);
       res.appendChild(it);
     });
   }
-
-  function typeLabel(t){ return t==='flat'?'Квартира':t==='house'?'Дом':t==='land'?'Земля':'—' }
-  function statusLabel(s){ return s==='sale'?'Продаётся':s==='rent'?'Аренда':'—' }
-  function money(n){ return new Intl.NumberFormat('ru-RU',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n) }
-  function escapeHTML(s){ return s.replace(/[&<>\"']/g, m=>({\"&\":\"&amp;\",\"<\":\"&lt;\",\">\":\"&gt;\",\"\\\"\":\"&quot;\",\"'\":\"&#039;\"}[m])) }
 
   function apply(){
     const type = $("f_type").value;
@@ -267,17 +254,17 @@
     const rooms = $("f_rooms").value;
     const floor = parseInt($("f_floor").value);
     const floors_max = parseInt($("f_floors_max").value);
-    // districts
-    const chosen = Array.from($("f_districts").querySelectorAll("input[type=checkbox]"))
-      .filter(cb=>cb.checked).map((cb,i)=>DISTRICTS[i]);
+    const chosen = Array.from($("f_districts").querySelectorAll("input[type=checkbox]:checked"))
+      .map(cb=>cb.getAttribute("data-district"));
 
-    let list = objects.filter(o=>{
+    const list = objects.filter(o=>{
       if(type && o.type!==type) return false;
       if(status && o.status!==status) return false;
       if(!isNaN(price_to) && o.price && o.price>price_to) return false;
       if(!isNaN(area_from) && o.area && o.area<area_from) return false;
-      if(type==='flat'){
-        if(rooms){ if(rooms==='5+' && (!o.rooms || o.rooms<5)) return false; if(rooms!=='5+' && o.rooms !== parseInt(rooms)) return false; }
+      if(o.type==='flat'){
+        if(rooms){ if(rooms==='5+' && (!o.rooms || o.rooms<5)) return false;
+                   if(rooms!=='5+' && o.rooms !== parseInt(rooms)) return false; }
         if(!isNaN(floor) && o.floor !== floor) return false;
         if(!isNaN(floors_max) && o.floors && o.floors>floors_max) return false;
       }
@@ -288,7 +275,7 @@
   }
 
   function resetFilters(){
-    ["f_type","f_status","f_price_to","f_area_from","f_rooms","f_floor","f_floors_max"].forEach(id=>{$(id).value=""});
+    ["f_type","f_status","f_price_to","f_area_from","f_rooms","f_floor","f_floors_max"].forEach(id=>{$(id).value="";});
     $("f_districts").querySelectorAll("input[type=checkbox]").forEach(cb=>cb.checked=false);
     render(objects);
   }
@@ -308,16 +295,14 @@
       floors: parseInt($("a_floors").value)||0,
       desc: $("a_desc").value.trim()
     };
-    objects.push(o); save(); apply(); clearAddForm();
-  }
-
-  function clearAddForm(){
-    ["a_title","a_quarter","a_price","a_area","a_rooms","a_floor","a_floors","a_desc"].forEach(id=>{$(id).value=""});
+    objects.push(o); save(); apply();
+    ["a_title","a_quarter","a_price","a_area","a_rooms","a_floor","a_floors","a_desc"].forEach(id=>{$(id).value="";});
   }
 
   function clearObjects(){
-    if(!confirm("Точно удалить все объекты?")) return;
-    objects = []; save(); render();
+    if(confirm("Точно удалить все объекты?")){
+      objects = []; save(); render(objects);
+    }
   }
 
   function exportJSON(){
@@ -327,18 +312,26 @@
     a.download = "realty_backup.json";
     a.click();
   }
-  function importJSON(e){
-    const file = e.target.files[0]; if(!file) return;
+
+  function importJSON(file){
     const reader = new FileReader();
     reader.onload = ()=>{
-      try{ const arr = JSON.parse(reader.result); if(Array.isArray(arr)){ objects = arr; save(); apply(); alert("Импортировано"); } }
-      catch(_){ alert("Ошибка формата файла"); }
+      try{
+        const arr = JSON.parse(reader.result);
+        if(Array.isArray(arr)){ objects = arr; save(); apply(); alert("Импортировано"); }
+        else alert("Неверный формат файла");
+      }catch(_){ alert("Ошибка при импорте"); }
     };
     reader.readAsText(file);
   }
+
   function wipe(){
-    if(!confirm("Сбросить всё (объекты и фильтры)?")) return;
-    localStorage.removeItem(LS_KEY); objects=[]; init(); render();
+    if(confirm("Сбросить всё (объекты и фильтры)?")){
+      localStorage.removeItem(LS_KEY);
+      objects = [];
+      initDistricts();
+      render(objects);
+    }
   }
 
   function demo(){
@@ -348,18 +341,29 @@
       {id:"2", type:"flat", status:"rent", title:"2-комн, Мирабад 5", district:"Мирабад", quarter:"5", price:600, area:65, rooms:2, floor:5, floors:9, desc:"Светлая, рядом школа и метро"},
       {id:"3", type:"house", status:"sale", title:"Дом, Учтепа, 4 сотки", district:"Учтепа", quarter:"", price:95000, area:120, rooms:4, desc:"Можно жить, кирпич, двор"},
       {id:"4", type:"land", status:"sale", title:"Земельный участок 6 соток", district:"Алмазар", quarter:"", price:70000, area:600, desc:"Под строительство, коммуникации рядом"},
-      {id:"5", type:"flat", status:"sale", title:"3-комн, Чиланзар 12", district:"Чиланзар", quarter:"12", price:78000, area:80, rooms:3, floor:2, floors:3, desc:"Тихий двор, тёплая"},
+      {id:"5", type:"flat", status:"sale", title:"3-комн, Чиланзар 12", district:"Чиланзар", quarter:"12", price:78000, area:80, rooms:3, floor:2, floors:3, desc:"Тихий двор, тёплая"}
     ];
     save(); apply();
   }
 
-  function init(){
+  // Привязка событий после загрузки DOM
+  document.addEventListener("DOMContentLoaded", ()=>{
     initDistricts();
     load();
     if(objects.length===0) demo(); else apply();
-  }
 
-  init();
+    $("btnApply").addEventListener("click", apply);
+    $("btnResetFilters").addEventListener("click", resetFilters);
+
+    $("btnAdd").addEventListener("click", addObject);
+    $("btnDemo").addEventListener("click", demo);
+    $("btnClearObjects").addEventListener("click", clearObjects);
+
+    $("btnExport").addEventListener("click", exportJSON);
+    $("fileImport").addEventListener("change", (e)=>{ if(e.target.files[0]) importJSON(e.target.files[0]); });
+    $("btnWipe").addEventListener("click", wipe);
+  });
+})();
 </script>
 </body>
 </html>
