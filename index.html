@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Каталог недвижимости — v1.4</title>
+<title>Каталог недвижимости — v1.3-fix</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
 <style>
 :root{--bg:#f6f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#2563eb;--bad:#dc2626;--border:#e5e7eb}
@@ -49,9 +49,6 @@ input[type=number]{width:130px}
 .badge{display:inline-block;padding:2px 6px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
 .section-hint{font-size:12px;color:var(--muted);margin:4px 0 8px}
 .small{font-size:12px;color:var(--muted)}
-hr{border:0;border-top:1px solid var(--border);margin:10px 0}
-.tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 8px;margin:4px 6px 0 0}
-.tag .x{cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:0 5px;background:#fff}
 </style>
 </head>
 <body>
@@ -89,41 +86,37 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     <div class="card" id="filtersCard">
       <div class="section-title">Фильтр</div>
 
-      <!-- Переключатель режима -->
+      <!-- Режим -->
       <div class="row">
-        <div>
-          <label><input type="radio" name="mode" value="area" id="mode_area" checked> По районам/кварталам</label>
-        </div>
-        <div>
-          <label><input type="radio" name="mode" value="radius" id="mode_radius"> По радиусу</label>
-        </div>
+        <div><label><input type="radio" name="mode" value="area" id="mode_area" checked> По районам/кварталам</label></div>
+        <div><label><input type="radio" name="mode" value="radius" id="mode_radius"> По радиусу</label></div>
       </div>
 
-      <!-- РАЙОНЫ -->
+      <!-- Районы -->
       <div id="sec_districts">
         <div class="section-title" style="margin-top:0">Районы (можно несколько)</div>
         <div class="row" id="f_districts" style="gap:8px"></div>
       </div>
 
-      <!-- КВАРТАЛЫ/МАХАЛЛИ -->
+      <!-- Кварталы/махалли -->
       <div id="sec_quarters">
         <div class="section-title">Кварталы/махалли</div>
-        <div class="section-hint" id="q_hint">Сначала выбери районы — появится список кварталов и махаллей этих районов (из справочника).</div>
+        <div class="section-hint" id="q_hint">Сначала выбери районы — появится список кварталов/махаллей из объявлений.</div>
         <div class="row" id="f_quarters_box" style="gap:8px"></div>
         <div class="row">
-          <div><label>Диапазон кварталов от</label><input id="f_quarter_from" type="number" min="0" placeholder="напр. 5"></div>
-          <div><label>до</label><input id="f_quarter_to" type="number" min="0" placeholder="напр. 12"></div>
-          <div style="flex:1"><label>Название содержит</label><input id="f_quarter_text" placeholder="напр. Куйлюк, Чорсу..."></div>
+          <div><label>Диапазон кварталов от</label><input id="f_quarter_from" type="number" min="0" placeholder="например 5"></div>
+          <div><label>до</label><input id="f_quarter_to" type="number" min="0" placeholder="например 12"></div>
+          <div style="flex:1"><label>Название содержит</label><input id="f_quarter_text" placeholder="Куйлюк, Чорсу..."></div>
         </div>
       </div>
 
-      <!-- РАДИУС -->
+      <!-- Радиус -->
       <div id="sec_radius" class="dim">
         <div class="section-title">Поиск по радиусу</div>
         <div class="row">
           <div style="flex:1">
             <div id="f_map" class="map-sm"></div>
-            <div class="help">Поставь точку (центр), укажи радиус ниже. В режим радиуса переключись выше.</div>
+            <div class="help">Поставь точку на карте, задай радиус ниже и переключись в режим радиуса.</div>
           </div>
           <div>
             <label>Радиус (км)</label>
@@ -132,7 +125,7 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
         </div>
       </div>
 
-      <!-- общие фильтры -->
+      <!-- Общие фильтры -->
       <div class="row">
         <div><label>Тип</label>
           <select id="f_type"><option value="">Любой</option><option value="flat">Квартира</option><option value="house">Дом</option><option value="land">Земля</option></select>
@@ -185,8 +178,8 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
         <div>
           <label>Сортировка</label>
           <select id="f_sort">
-            <option value="date_desc">По дате (новые сначала)</option>
-            <option value="date_asc">По дате (старые сначала)</option>
+            <option value="date_desc">По дате новые сначала</option>
+            <option value="date_asc">По дате старые сначала</option>
             <option value="price_asc">Цена по возрастанию</option>
             <option value="price_desc">Цена по убыванию</option>
             <option value="area_asc">Площадь по возрастанию</option>
@@ -238,7 +231,6 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
         </div>
       </div>
 
-      <!-- Карта выбора точки -->
       <div class="section-title">Локация на карте</div>
       <div id="a_map" class="map-md"></div>
       <div class="row">
@@ -247,7 +239,8 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
       </div>
 
       <div class="row">
-        <div style="flex:1"><label>Фото (загрузка файлов)</label>
+        <div style="flex:1">
+          <label>Фото (загрузка файлов)</label>
           <input id="a_files" type="file" accept="image/*" multiple>
           <div class="help">Выбери фото. Ниже превью — можно удалять и менять порядок перетаскиванием.</div>
           <div id="drafts" class="drafts"></div>
@@ -272,20 +265,7 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
         <button class="btn btn-ghost" id="btnDemo">Демо-данные</button>
         <button class="btn btn-danger" id="btnClearObjects">Очистить объекты</button>
       </div>
-      <div class="sub">Фото и база хранятся локально. Экспорт/импорт JSON переносит всё (включая фото base64).</div>
-
-      <hr>
-
-      <!-- СПРАВОЧНИК ЛОКАЦИЙ -->
-      <div class="section-title">Справочник локаций по районам</div>
-      <div class="small">Отсюда берутся галочки «кварталы/махалли» в фильтре. Можно редактировать под себя.</div>
-      <div class="row">
-        <div><label>Район</label><select id="loc_district"></select></div>
-        <div style="flex:1"><label>Добавить квартал/махаллю</label><input id="loc_new" placeholder="например: Куйлюк 5 квартал"></div>
-        <div><label>&nbsp;</label><button class="btn btn-ghost" id="loc_add">Добавить</button></div>
-      </div>
-      <div id="loc_tags"></div>
-      <div class="small">Подсказка: кликай на крестик, чтобы удалить пункт из справочника.</div>
+      <div class="sub">Фото и база хранятся локально. Экспорт/импорт JSON переносит всё, включая фото base64.</div>
     </div>
   </div>
 
@@ -300,7 +280,7 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
   </div>
 </div>
 
-<!-- Модалка просмотра -->
+<!-- Модалка -->
 <div id="modal" class="modal">
   <div class="box">
     <div class="head">
@@ -320,36 +300,20 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 <script>
 (function(){
-  console.log("v1.4 init");
+  console.log("v1.3-fix init");
   const DISTRICTS=["Юнусабад","Мирзо-Улугбек","Чиланзар","Шайхантахур","Яккасарай","Учтепа","Сергелийский","Алмазар","Бектемир","Мирабад","Яшнабад"];
-  const LS_KEY="realty_objects_v7";
+  const LS_KEY="realty_objects_v6";
   const LS_SETTINGS="realty_settings_v1";
-  const LS_LOC="realty_locations_v1";
+
   let objects=[];
   let settings={currency:"USD", rate:12700};
-  // Справочник по умолчанию (редактируемый)
-  let LOC_DIR = {
-    "Юнусабад": Array.from({length:19},(_,i)=> (i+1)+" квартал"),
-    "Чиланзар": Array.from({length:30},(_,i)=> (i+1)+" квартал"),
-    "Сергелийский": Array.from({length:10},(_,i)=> "Куйлюк "+(i+1)+" квартал"),
-    "Шайхантахур": ["Чорсу","Эски шахар"],
-    "Яккасарай": ["Кадышева","Глинка"],
-    "Учтепа": [],
-    "Алмазар": [],
-    "Бектемир": [],
-    "Мирабад": [],
-    "Мирзо-Улугбек": [],
-    "Яшнабад": []
-  };
   let galleryDraft=[];
-
-  // Режим поиска
   let mode="area"; // 'area' | 'radius'
 
   // Карты
   let fMap, fMarker=null, fCenter=null; // фильтр радиуса
-  let aMap, aMarker=null; // админ точка
-  let mLeaf=null; // карта модалки
+  let aMap, aMarker=null; // админка
+  let mLeaf=null; // модалка
 
   // helpers
   const $=id=>document.getElementById(id);
@@ -363,90 +327,46 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
   const normalizeFilterPrice=(val,cur)=>{const num=parseFloat(val);if(isNaN(num))return NaN;return cur==="USD"?num:num/(settings.rate||12700)};
   const distanceKm=(lat1,lon1,lat2,lon2)=>{const R=6371;const d2r=Math.PI/180;const dLat=(lat2-lat1)*d2r;const dLon=(lon2-lon1)*d2r;const a=Math.sin(dLat/2)**2+Math.cos(lat1*d2r)*Math.cos(lat2*d2r)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(a));};
 
-  function showNotice(msg){ const n=$("notice"); n.textContent=msg; n.style.display="block"; }
-  function hideNotice(){ $("notice").style.display="none"; }
-
-  // --- Справочник: загрузка/сохранение
-  function loadLocDir(){
-    try{
-      const saved = JSON.parse(localStorage.getItem(LS_LOC)||"{}");
-      if(saved && typeof saved==="object"){
-        LOC_DIR = Object.assign({}, LOC_DIR, saved);
-      }
-    }catch(_){}
+  function load(){
+    try{objects=JSON.parse(localStorage.getItem(LS_KEY)||"[]")}catch(_){objects=[]}
+    try{settings=Object.assign(settings, JSON.parse(localStorage.getItem(LS_SETTINGS)||"{}"))}catch(_){}
+    $("s_currency").value=settings.currency;
+    $("s_rate").value=String(settings.rate||12700);
+    $("settingsInfo").textContent=`Показ: ${settings.currency}, курс ${settings.rate} UZS`;
   }
-  function saveLocDir(){
-    localStorage.setItem(LS_LOC, JSON.stringify(LOC_DIR));
-  }
-
-  // --- UI справочника
-  function initLocDirectoryUI(){
-    const sel=$("loc_district");
-    sel.innerHTML="";
-    DISTRICTS.forEach(d=>{
-      const o=el("option",{},d); o.value=d; sel.appendChild(o);
-    });
-    sel.addEventListener("change", renderLocTags);
-    $("loc_add").addEventListener("click", ()=>{
-      const d=sel.value;
-      const name=($("loc_new").value||"").trim();
-      if(!name) return;
-      const list = LOC_DIR[d] || (LOC_DIR[d]=[]);
-      if(!list.includes(name)) list.push(name);
-      $("loc_new").value="";
-      saveLocDir();
-      renderLocTags();
-      // обновим чекбоксы фильтра, если этот район выбран
-      renderQuarterCheckboxes();
-    });
-    renderLocTags();
-  }
-  function renderLocTags(){
-    const d=$("loc_district").value;
-    const box=$("loc_tags"); box.innerHTML="";
-    const list = LOC_DIR[d] || [];
-    if(list.length===0){
-      box.innerHTML = '<div class="small">Пока пусто. Добавь кварталы/махалли выше.</div>';
-      return;
-    }
-    list.forEach((name,idx)=>{
-      const t=el("span",{class:"tag"},`<span>${esc(name)}</span>`);
-      const x=el("span",{class:"x"},"✕");
-      x.addEventListener("click",()=>{
-        LOC_DIR[d].splice(idx,1);
-        saveLocDir();
-        renderLocTags();
-        renderQuarterCheckboxes();
-      });
-      t.appendChild(x);
-      box.appendChild(t);
-    });
+  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(objects)); }
+  function saveSettings(){
+    settings.currency=$("s_currency").value;
+    settings.rate=parseFloat($("s_rate").value)||12700;
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+    $("settingsInfo").textContent=`Показ: ${settings.currency}, курс ${settings.rate} UZS`;
+    apply();
   }
 
   function initDistricts(){
     const box=$("f_districts"), sel=$("a_district");
     box.innerHTML=""; sel.innerHTML="";
     DISTRICTS.forEach(d=>{
-      const label=el("label"); const input=el("input",{type:"checkbox","data-district":d}); const span=el("span",{},d);
+      const label=el("label");
+      const input=el("input",{type:"checkbox","data-district":d});
+      const span=el("span",{},d);
       label.appendChild(input); label.appendChild(span); box.appendChild(label);
       const o=el("option",{},d); o.value=d; sel.appendChild(o);
     });
-    $("f_districts").addEventListener("change",()=>{ renderQuarterCheckboxes(); });
+    $("f_districts").addEventListener("change",renderQuarterCheckboxes);
   }
 
-  function getChosenDistricts(){ return Array.from($("f_districts").querySelectorAll("input[type=checkbox]:checked")).map(cb=>cb.getAttribute("data-district")); }
+  function getChosenDistricts(){
+    return Array.from($("f_districts").querySelectorAll("input[type=checkbox]:checked"))
+      .map(cb=>cb.getAttribute("data-district"));
+  }
 
-  // Собираем кварталы/махалли: из справочника + из объявлений по выбранным районам
-  function collectQuartersFor(districts){
+  // Кварталы/махалли берём из объявлений по выбранным районам
+  function collectQuartersByDistrict(chosen){
     const set=new Set();
-    // из справочника
-    districts.forEach(d=>{
-      (LOC_DIR[d]||[]).forEach(q=> set.add(q));
-    });
-    // из объявлений
     objects.forEach(o=>{
       if(!o.district) return;
-      if(districts.length && !districts.includes(o.district)) return;
+      if(chosen.length && !chosen.includes(o.district)) return;
       if(o.quarter && o.quarter.trim()){
         o.quarter.split(",").map(s=>s.trim()).filter(Boolean).forEach(q=>set.add(q));
       }
@@ -460,12 +380,12 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     const hint=$("q_hint");
     box.innerHTML="";
     if(chosen.length===0){
-      hint.textContent="Сначала выбери районы — появится список кварталов и махаллей этих районов (из справочника).";
+      hint.textContent="Сначала выбери районы — появится список кварталов/махаллей из объявлений.";
       return;
     }
-    const quarters=collectQuartersFor(chosen);
+    const quarters=collectQuartersByDistrict(chosen);
     if(quarters.length===0){
-      hint.textContent="В выбранных районах пока нет пунктов в справочнике. Добавь их ниже в «Справочнике локаций».";
+      hint.textContent="В выбранных районах пока нет объявлений с заполненным кварталом/махаллей.";
       return;
     }
     hint.textContent="Отметь нужные кварталы/махалли (можно несколько).";
@@ -475,23 +395,6 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
       const span=el("span",{},q);
       label.appendChild(input); label.appendChild(span); box.appendChild(label);
     });
-  }
-
-  function load(){
-    try{objects=JSON.parse(localStorage.getItem(LS_KEY)||"[]")}catch(_){objects=[]}
-    try{settings=Object.assign(settings, JSON.parse(localStorage.getItem(LS_SETTINGS)||"{}"))}catch(_){}
-    loadLocDir();
-    $("s_currency").value=settings.currency;
-    $("s_rate").value=String(settings.rate||12700);
-    $("settingsInfo").textContent=`Показ: ${settings.currency}, курс ${settings.rate} UZS`;
-  }
-  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(objects)); }
-  function saveSettings(){
-    settings.currency=$("s_currency").value;
-    settings.rate=parseFloat($("s_rate").value)||12700;
-    localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
-    $("settingsInfo").textContent=`Показ: ${settings.currency}, курс ${settings.rate} UZS`;
-    apply();
   }
 
   function permalinkFor(o){ const base=location.origin+location.pathname; return `${base}#id=${encodeURIComponent(o.id)}`; }
@@ -512,7 +415,6 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     return g;
   }
 
-  // РЕНДЕР СПИСКА
   function render(list=objects){
     const res=$("results"), empty=$("empty");
     res.innerHTML=""; $("count").textContent=String(list.length);
@@ -532,7 +434,6 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
       const titleLink=el("a",{href:"#",class:"section-title"},esc(o.title||"Без названия"));
       titleLink.addEventListener("click",(e)=>{e.preventDefault(); openModal(o);});
       const meta=el("div",{class:"muted"},`Площадь: ${o.area?o.area+" м²":"—"} • <span class="price">${(o.price||o.price===0)?toDisplayCurrency(o.price):"Цена не указана"}</span>`);
-
       const gal=galleryNode(o.photos);
       const actions=el("div",{class:"footer"});
       const openBtn=el("button",{class:"btn btn-ghost"},"Открыть"); openBtn.addEventListener("click",()=>openModal(o));
@@ -556,8 +457,8 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     }
   }
 
-  // МОДАЛКА
-  let m, m_close, m_title, m_gallery, m_meta, m_desc, m_map, m_actions, mLeaf=null;
+  // Модалка
+  let m, m_close, m_title, m_gallery, m_meta, m_desc, m_map, m_actions;
   function initModal(){
     m=$("modal"); m_close=$("m_close"); m_title=$("m_title"); m_gallery=$("m_gallery"); m_meta=$("m_meta"); m_desc=$("m_desc"); m_map=$("m_map"); m_actions=$("m_actions");
     m_close.addEventListener("click",closeModal);
@@ -605,8 +506,56 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
   }
   function closeModal(){ m.style.display="none"; if(mLeaf){ mLeaf.remove(); mLeaf=null; } }
 
-  // ФИЛЬТР
-  function getChosenQuarters(){ return Array.from($("f_quarters_box").querySelectorAll("input[type=checkbox]:checked")).map(cb=>cb.getAttribute("data-quarter").toLowerCase()); }
+  // Работа с фото в админке
+  function renderDrafts(){
+    const box=$("drafts"); box.innerHTML="";
+    galleryDraft.forEach((it,idx)=>{
+      const d=el("div",{class:"draft",draggable:"true","data-idx":idx});
+      const img=el("img",{src:it.dataURL,alt:"photo"});
+      const x=el("div",{class:"x"},"✕");
+      x.addEventListener("click",()=>{ galleryDraft.splice(idx,1); renderDrafts(); });
+      d.appendChild(img); d.appendChild(x);
+
+      d.addEventListener("dragstart",e=>{ d.classList.add("drag"); e.dataTransfer.setData("text/plain", String(idx)); });
+      d.addEventListener("dragend",()=>{ d.classList.remove("drag"); });
+      d.addEventListener("dragover",e=>{ e.preventDefault(); d.classList.add("drag"); });
+      d.addEventListener("dragleave",()=>{ d.classList.remove("drag"); });
+      d.addEventListener("drop",e=>{
+        e.preventDefault();
+        const from=Number(e.dataTransfer.getData("text/plain"));
+        const to=idx;
+        if(from===to) return;
+        const [moved]=galleryDraft.splice(from,1);
+        galleryDraft.splice(to,0,moved);
+        renderDrafts();
+      });
+
+      box.appendChild(d);
+    });
+  }
+  async function filesToDataURLs(files){
+    const arr=[];
+    for(const f of files){
+      const data = await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); });
+      arr.push({dataURL:data, id:Date.now()+"-"+Math.random().toString(16).slice(2)});
+    }
+    return arr;
+  }
+  async function handleFiles(){
+    const input=$("a_files");
+    const files=input.files;
+    if(!files || !files.length) return;
+    const items = await filesToDataURLs(files);
+    galleryDraft = galleryDraft.concat(items);
+    input.value="";
+    renderDrafts();
+  }
+
+  // Фильтр
+  function getChosenQuarters(){
+    return Array.from($("f_quarters_box").querySelectorAll("input[type=checkbox]:checked"))
+      .map(cb=>cb.getAttribute("data-quarter").toLowerCase());
+  }
 
   function apply(){
     const type=$("f_type").value, status=$("f_status").value;
@@ -695,52 +644,6 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     render(objects);
   }
 
-  // Черновик галереи
-  function renderDrafts(){
-    const box=$("drafts"); box.innerHTML="";
-    galleryDraft.forEach((it,idx)=>{
-      const d=el("div",{class:"draft",draggable:"true","data-idx":idx});
-      const img=el("img",{src:it.dataURL,alt:"photo"});
-      const x=el("div",{class:"x"},"✕");
-      x.addEventListener("click",()=>{ galleryDraft.splice(idx,1); renderDrafts(); });
-      d.appendChild(img); d.appendChild(x);
-
-      d.addEventListener("dragstart",e=>{ d.classList.add("drag"); e.dataTransfer.setData("text/plain", String(idx)); });
-      d.addEventListener("dragend",()=>{ d.classList.remove("drag"); });
-      d.addEventListener("dragover",e=>{ e.preventDefault(); d.classList.add("drag"); });
-      d.addEventListener("dragleave",()=>{ d.classList.remove("drag"); });
-      d.addEventListener("drop",e=>{
-        e.preventDefault();
-        const from=Number(e.dataTransfer.getData("text/plain"));
-        const to=idx;
-        if(from===to) return;
-        const [moved]=galleryDraft.splice(from,1);
-        galleryDraft.splice(to,0,moved);
-        renderDrafts();
-      });
-
-      box.appendChild(d);
-    });
-  }
-
-  async function filesToDataURLs(files){
-    const arr=[];
-    for(const f of files){
-      const data = await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); });
-      arr.push({dataURL:data, id:Date.now()+"-"+Math.random().toString(16).slice(2)});
-    }
-    return arr;
-  }
-  async function handleFiles(){
-    const input=$("a_files");
-    const files=input.files;
-    if(!files || !files.length) return;
-    const items = await filesToDataURLs(files);
-    galleryDraft = galleryDraft.concat(items);
-    input.value="";
-    renderDrafts();
-  }
-
   async function addObject(){
     const urlsRaw=$("a_photos").value.trim();
     const urlPhotos = urlsRaw? urlsRaw.split(",").map(s=>s.trim()).filter(Boolean) : [];
@@ -774,21 +677,6 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
   function exportJSON(){ const data=JSON.stringify(objects,null,2); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data],{type:"application/json"})); a.download="realty_backup.json"; a.click(); }
   function importJSON(file){ const r=new FileReader(); r.onload=()=>{ try{ const arr=JSON.parse(r.result); if(Array.isArray(arr)){objects=arr; save(); renderQuarterCheckboxes(); apply(); alert("Импортировано")} else alert("Неверный формат"); }catch(_){ alert("Ошибка при импорте"); } }; r.readAsText(file); }
 
-  function demo(){
-    if(objects.length>0) return;
-    objects=[
-      {id:"1",created:Date.now()-400000,type:"flat",status:"sale",title:"5-комн, Юнусабад 9, ремонт",district:"Юнусабад",quarter:"9 квартал",price:120000,area:106,rooms:5,floor:3,floors:4,parking:"yes",bath:"separate",
-        photos:["https://picsum.photos/seed/a1/600/400","https://picsum.photos/seed/a2/600/400"],phone:"+998901234567",tg:"golodranec",lat:41.366, lng:69.286, desc:"Банковская планировка, 2 санузла, парковка"},
-      {id:"2",created:Date.now()-300000,type:"flat",status:"rent",title:"2-комн, Сергели, Куйлюк 5",district:"Сергелийский",quarter:"Куйлюк 5 квартал",price:600,area:65,rooms:2,floor:5,floors:9,parking:"no",bath:"combined",
-        photos:["https://picsum.photos/seed/b1/600/400"],phone:"+998931112233",tg:"",lat:41.246, lng:69.214, desc:"Светлая, рядом школа и метро"},
-      {id:"3",created:Date.now()-200000,type:"house",status:"sale",title:"Дом, Шайхантахур, Чорсу",district:"Шайхантахур",quarter:"Чорсу",price:95000,area:120,rooms:4,parking:"yes",bath:"multiple",
-        photos:["https://picsum.photos/seed/c1/600/400"],phone:"",tg:"",lat:41.327, lng:69.23, desc:"Можно жить, кирпич, двор"},
-      {id:"4",created:Date.now()-100000,type:"land",status:"sale",title:"Участок 6 соток",district:"Алмазар",quarter:"",price:70000,area:600,
-        photos:["https://picsum.photos/seed/d1/600/400"],desc:"Под строительство, коммуникации рядом", lat:41.354, lng:69.203}
-    ];
-    save();
-  }
-
   // Карты
   function initFilterMap(){
     fMap = L.map('f_map').setView([41.32,69.25], 11);
@@ -811,7 +699,7 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     });
   }
 
-  // Переключение режима
+  // Радио режима
   function setMode(newMode){
     mode=newMode;
     const secD=$("sec_districts"), secQ=$("sec_quarters"), secR=$("sec_radius");
@@ -824,17 +712,33 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     }
   }
 
+  // Демо-данные
+  function demo(){
+    if(objects.length>0) return;
+    objects=[
+      {id:"1",created:Date.now()-400000,type:"flat",status:"sale",title:"5-комн, Юнусабад 9, ремонт",district:"Юнусабад",quarter:"9 квартал",price:120000,area:106,rooms:5,floor:3,floors:4,parking:"yes",bath:"separate",
+        photos:["https://picsum.photos/seed/a1/600/400","https://picsum.photos/seed/a2/600/400"],phone:"+998901234567",tg:"golodranec",lat:41.366, lng:69.286, desc:"Банковская планировка, 2 санузла, парковка"},
+      {id:"2",created:Date.now()-300000,type:"flat",status:"rent",title:"2-комн, Сергели, Куйлюк 5",district:"Сергелийский",quarter:"Куйлюк 5 квартал",price:600,area:65,rooms:2,floor:5,floors:9,parking:"no",bath:"combined",
+        photos:["https://picsum.photos/seed/b1/600/400"],phone:"+998931112233",tg:"",lat:41.246, lng:69.214, desc:"Светлая, рядом школа и метро"},
+      {id:"3",created:Date.now()-200000,type:"house",status:"sale",title:"Дом, Шайхантахур, Чорсу",district:"Шайхантахур",quarter:"Чорсу",price:95000,area:120,rooms:4,parking:"yes",bath:"multiple",
+        photos:["https://picsum.photos/seed/c1/600/400"],phone:"",tg:"",lat:41.327, lng:69.23, desc:"Можно жить, кирпич, двор"},
+      {id:"4",created:Date.now()-100000,type:"land",status:"sale",title:"Участок 6 соток",district:"Алмазар",quarter:"",price:70000,area:600,
+        photos:["https://picsum.photos/seed/d1/600/400"],desc:"Под строительство, коммуникации рядом", lat:41.354, lng:69.203}
+    ];
+    save();
+  }
+
+  // Старт
   document.addEventListener("DOMContentLoaded",()=>{
-    load(); demo();
-    initDistricts(); hideNotice();
+    load();
+    initDistricts();
     initModal();
     initFilterMap();
     initAdminMap();
-    initLocDirectoryUI();
-
     render(objects);
     renderQuarterCheckboxes();
 
+    // Кнопки
     $("btnApply").addEventListener("click",apply);
     $("btnResetFilters").addEventListener("click",resetFilters);
     $("btnAdd").addEventListener("click",()=>{addObject().catch(console.error)});
@@ -849,15 +753,12 @@ hr{border:0;border-top:1px solid var(--border);margin:10px 0}
     $("mode_area").addEventListener("change",e=>{ if(e.target.checked) setMode("area"); });
     $("mode_radius").addEventListener("change",e=>{ if(e.target.checked) setMode("radius"); });
 
+    // Хэш-ссылка на объявление
     if(location.hash.startsWith("#id=")){
       const id=decodeURIComponent(location.hash.slice(4));
       const o=objects.find(x=>x.id===id);
       if(o) setTimeout(()=>openModal(o),150);
     }
-
-    // Селектор района в справочнике и селектор района в админке синхронизируем по списку DISTRICTS
-    const locSel=$("loc_district"), adSel=$("a_district");
-    adSel.innerHTML=""; DISTRICTS.forEach(d=>{const o=el("option",{},d); o.value=d; adSel.appendChild(o);});
   });
 })();
 </script>
