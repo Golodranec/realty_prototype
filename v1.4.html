@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Каталог недвижимости — v1.4</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#2563eb;--bad:#dc2626;--border:#e5e7eb}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+.wrap{max-width:1160px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:8px 0 4px}.sub{color:var(--muted);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 4px 18px rgba(0,0,0,.04)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}
+input,select,button,textarea{border:1px solid var(--border);border-radius:10px;padding:10px;font-size:14px;background:#fff;color:var(--text)}
+input[type=number]{width:130px}
+.btn{cursor:pointer}.btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
+.btn-ghost{background:#fff}.btn-danger{background:#fff;color:var(--bad);border-color:#fecaca}
+.grid{display:grid;gap:10px}@media(min-width:1000px){.grid-2{grid-template-columns:1.1fr .9fr}}
+.list{display:grid;gap:10px}.item{display:grid;gap:8px;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
+.muted{color:var(--muted)} .section-title{font-weight:700;margin:8px 0}.empty{color:var(--muted);padding:10px}
+.footer{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.price{font-weight:800}
+.thumb{width:100%;max-width:300px;height:180px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+.link{color:#2563eb;text-decoration:none}.link:hover{text-decoration:underline}
+.gallery{position:relative;display:inline-block}
+.gallery .nav{position:absolute;top:50%;transform:translateY(-50%);background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;user-select:none}
+.gallery .prev{left:6px}.gallery .next{right:6px}
+.counter{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;padding:2px 6px;border-radius:6px;font-size:12px}
+</style>
+</head><script>
+document.addEventListener("DOMContentLoaded", () => {
+  const districts = {
+    "Юнусабад": Array.from({length:19},(_,i)=> (i+1)+" квартал"),
+    "Чиланзар": Array.from({length:30},(_,i)=> (i+1)+" квартал"),
+    "Сергели": Array.from({length:10},(_,i)=> "Куйлюк "+(i+1)+" квартал"),
+    "Мирабад": [],
+    "Шайхантахур": [],
+    "Учтепа": [],
+    "Мирзо-Улугбек": [],
+    "Яккасарай": [],
+    "Алмазар": [],
+    "Бектемир": [],
+    "Яшнабад": []
+  };
+
+  let objects = [];
+
+  const $ = id => document.getElementById(id);
+  const el = (t,a={},h="") => {const e=document.createElement(t);for(const k in a) e.setAttribute(k,a[k]); if(h) e.innerHTML=h; return e;};
+
+  function renderDistricts(){
+    const box=$("f_districts"), sel=$("a_district");
+    box.innerHTML=""; sel.innerHTML="";
+    Object.keys(districts).forEach(d=>{
+      const l=el("label");
+      const cb=el("input",{type:"checkbox","data-district":d});
+      l.appendChild(cb); l.appendChild(document.createTextNode(" "+d));
+      box.appendChild(l);
+      const opt=el("option",{value:d},d);
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderQuarters(){
+    const chosen = Array.from($("f_districts").querySelectorAll("input:checked")).map(cb=>cb.getAttribute("data-district"));
+    const box=$("f_quarters");
+    box.innerHTML="";
+    chosen.forEach(d=>{
+      (districts[d]||[]).forEach(q=>{
+        const l=el("label");
+        const cb=el("input",{type:"checkbox","data-quarter":q});
+        l.appendChild(cb); l.appendChild(document.createTextNode(" "+d+" — "+q));
+        box.appendChild(l);
+      });
+    });
+  }
+
+  function applyFilter(){
+    let list=objects.slice();
+    const chosenD=Array.from($("f_districts").querySelectorAll("input:checked")).map(cb=>cb.getAttribute("data-district"));
+    const chosenQ=Array.from($("f_quarters").querySelectorAll("input:checked")).map(cb=>cb.getAttribute("data-quarter"));
+    const type=$("f_type").value, status=$("f_status").value;
+    const pf=parseFloat($("f_price_from").value)||0, pt=parseFloat($("f_price_to").value)||Infinity;
+    const af=parseFloat($("f_area_from").value)||0, at=parseFloat($("f_area_to").value)||Infinity;
+
+    list=list.filter(o=>{
+      if(type && o.type!==type) return false;
+      if(status && o.status!==status) return false;
+      if(chosenD.length && !chosenD.includes(o.district)) return false;
+      if(chosenQ.length && !chosenQ.includes(o.quarter)) return false;
+      if(o.price<pf || o.price>pt) return false;
+      if(o.area<af || o.area>at) return false;
+      return true;
+    });
+
+    renderResults(list);
+  }
+
+  function renderResults(list){
+    const res=$("results"); res.innerHTML="";
+    $("count").textContent=list.length;
+    list.forEach(o=>{
+      const it=el("div",{class:"item"});
+      const h=el("div",{class:"hdr"}, `<b>${o.title}</b>`);
+      const meta=el("div",{class:"muted"}, `${o.district}, ${o.quarter||""} • ${o.area} м² • ${o.price} $`);
+      let g="";
+      if(o.photos && o.photos.length){
+        g=galleryNode(o.photos);
+      }
+      const tg=o.tg? `<a href="https://t.me/${o.tg}?text=${encodeURIComponent("Здравствуйте! Интересует объявление: "+location.href)}" target="_blank" class="link">Написать в Telegram</a>`:"";
+      it.appendChild(h);
+      if(g) it.appendChild(g);
+      it.appendChild(meta);
+      if(tg) it.appendChild(el("div",{},tg));
+      res.appendChild(it);
+    });
+  }
+
+  function galleryNode(photos){
+    if(!photos.length) return null;
+    let idx=0;
+    const g=el("div",{class:"gallery"});
+    const img=el("img",{class:"thumb",src:photos[0]});
+    const prev=el("div",{class:"nav prev"},"‹");
+    const next=el("div",{class:"nav next"},"›");
+    const counter=el("div",{class:"counter"},"Фото 1/"+photos.length);
+    const upd=()=>{img.src=photos[idx];counter.textContent="Фото "+(idx+1)+"/"+photos.length;};
+    prev.onclick=()=>{idx=(idx-1+photos.length)%photos.length;upd();};
+    next.onclick=()=>{idx=(idx+1)%photos.length;upd();};
+    g.appendChild(img); g.appendChild(prev); g.appendChild(next); g.appendChild(counter);
+    return g;
+  }
+
+  function addObject(){
+    const d=$("a_district").value, q=$("a_quarter").value.trim();
+    const p=parseFloat($("a_price").value)||0;
+    const phs=$("a_photos").value.split(",").map(s=>s.trim()).filter(Boolean);
+    const tg=$("a_tg").value.trim();
+    const o={id:Date.now()+"",title:`Объект в ${d}`,district:d,quarter:q,price:p,area:50,type:"flat",status:"sale",photos:phs,tg:tg};
+    objects.push(o);
+    applyFilter();
+  }
+
+  function demo(){
+    if(objects.length) return;
+    objects=[
+      {id:"1",title:"5-комн, Юнусабад 9",district:"Юнусабад",quarter:"9 квартал",price:120000,area:106,type:"flat",status:"sale",photos:["https://picsum.photos/seed/a1/600/400"],tg:"golodranec"},
+      {id:"2",title:"2-комн, Сергели, Куйлюк 5",district:"Сергели",quarter:"Куйлюк 5 квартал",price:600,area:65,type:"flat",status:"rent",photos:["https://picsum.photos/seed/b1/600/400"],tg:""},
+      {id:"3",title:"Дом, Чиланзар 20 квартал",district:"Чиланзар",quarter:"20 квартал",price:95000,area:120,type:"house",status:"sale",photos:["https://picsum.photos/seed/c1/600/400"],tg:""}
+    ];
+    applyFilter();
+  }
+
+  $("btnApply").onclick=applyFilter;
+  $("btnReset").onclick=()=>{document.querySelectorAll("#filtersCard input").forEach(i=>i.checked=false);$("f_type").value="";$("f_status").value="";$("f_price_from").value="";$("f_price_to").value="";$("f_area_from").value="";$("f_area_to").value="";applyFilter();};
+  $("btnAdd").onclick=addObject;
+  $("btnDemo").onclick=demo;
+  $("f_districts").addEventListener("change",renderQuarters);
+
+  renderDistricts();
+  applyFilter();
+});
+</script>
+</body>
+</html>
+
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <h1>🏠 Каталог недвижимости v1.4</h1>
+      <div class="sub">С фильтрами по районам и кварталам, картой и Telegram-кнопкой</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card" id="filtersCard">
+      <div class="section-title">Фильтр</div>
+      <div class="row" id="f_districts"></div>
+      <div class="row" id="f_quarters"></div>
+      <div class="row">
+        <div><label>Тип</label>
+          <select id="f_type"><option value="">Любой</option><option value="flat">Квартира</option><option value="house">Дом</option><option value="land">Земля</option></select>
+        </div>
+        <div><label>Статус</label>
+          <select id="f_status"><option value="">Любой</option><option value="sale">Продаётся</option><option value="rent">Аренда</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Цена от</label><input id="f_price_from" type="number"></div>
+        <div><label>до</label><input id="f_price_to" type="number"></div>
+      </div>
+      <div class="row">
+        <div><label>Площадь от</label><input id="f_area_from" type="number"></div>
+        <div><label>до</label><input id="f_area_to" type="number"></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" id="btnApply">Применить</button>
+        <button class="btn btn-ghost" id="btnReset">Сбросить</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Добавить объект</div>
+      <div class="row">
+        <div><label>Район</label><select id="a_district"></select></div>
+        <div><label>Квартал</label><input id="a_quarter"></div>
+        <div><label>Цена</label><input id="a_price" type="number"></div>
+      </div>
+      <div class="row">
+        <div><label>Фото URL</label><input id="a_photos"></div>
+        <div><label>Telegram</label><input id="a_tg"></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" id="btnAdd">Добавить</button>
+        <button class="btn btn-ghost" id="btnDemo">Демо-данные</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hdr">
+      <div class="section-title">Результаты</div>
+      <div class="muted">Найдено: <span id="count">0</span></div>
+    </div>
+    <div id="results" class="list"></div>
+  </div>
+</div>
