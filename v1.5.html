@@ -17,33 +17,74 @@ input,select,button,textarea{border:1px solid var(--border);border-radius:10px;p
 input[type=number]{width:130px}
 .btn{cursor:pointer}.btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
 .btn-ghost{background:#fff}.btn-danger{background:#fff;color:var(--bad);border-color:#fecaca}
-.grid{display:grid;gap:10px}@media(min-width:1000px){.grid-2{grid-template-columns:1fr 1fr}}
+.grid{display:grid;gap:10px}@media(min-width:1000px){.grid-2{grid-template-columns:1.1fr .9fr}}
 .list{display:grid;gap:10px}.item{display:grid;gap:8px;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
 .hdr{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
 .muted{color:var(--muted)} .section-title{font-weight:700;margin:8px 0}.empty{color:var(--muted);padding:10px}
 .footer{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .price{font-weight:800}
-.thumb{width:100%;max-width:300px;height:180px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+.thumb{width:100%;max-width:320px;height:190px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
 .link{color:#2563eb;text-decoration:none}.link:hover{text-decoration:underline}
 .gallery{position:relative;display:inline-block}
 .gallery .nav{position:absolute;top:50%;transform:translateY(-50%);background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;user-select:none}
 .gallery .prev{left:6px}.gallery .next{right:6px}
 .counter{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;padding:2px 6px;border-radius:6px;font-size:12px}
-.map{height:200px;border:1px solid var(--border);border-radius:10px;margin-top:10px}
+.settings{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:10px;border-radius:12px;margin:10px 0}
+.map-sm{width:100%;height:220px;border:1px solid var(--border);border-radius:12px}
+.map-md{width:100%;height:260px;border:1px solid var(--border);border-radius:12px}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.4);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
+.modal .box{max-width:960px;width:100%;background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.modal .head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.modal .close{cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:10px;padding:6px 10px}
+.modal .body{display:grid;gap:12px}
+.badge{display:inline-block;padding:2px 6px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
+.small{font-size:12px;color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 8px}
+.chip .x{cursor:pointer;border:1px solid var(--border);border-radius:6px;background:#fff;padding:0 6px}
+.drafts{display:flex;gap:8px;flex-wrap:wrap}
+.draft{position:relative;border:1px dashed var(--border);border-radius:10px;overflow:hidden}
+.draft img{width:120px;height:80px;object-fit:cover;display:block}
+.draft .x{position:absolute;top:4px;right:4px;background:#fff;border:1px solid var(--border);border-radius:8px;cursor:pointer;padding:2px 6px;font-size:12px}
+.draft.drag{opacity:.6;border-color:#2563eb}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🏠 Каталог недвижимости v1.5</h1>
-  <div class="sub">С фильтрами, кварталами, картой и Telegram</div>
+  <div class="hdr">
+    <div>
+      <h1>🏠 Каталог недвижимости — v1.5</h1>
+      <div class="sub">База объявлений в браузере. Карта, фильтры, кварталы/махалли, Telegram.</div>
+    </div>
+    <div class="controls">
+      <div class="settings card">
+        <div>
+          <label>Валюта</label>
+          <select id="s_currency"><option value="USD">USD</option><option value="UZS">UZS</option></select>
+        </div>
+        <div>
+          <label>Курс (UZS за 1 USD)</label>
+          <input id="s_rate" type="number" min="1" value="12700" />
+        </div>
+        <button class="btn btn-ghost" id="btnSaveSettings">Сохранить</button>
+        <span class="muted" id="settingsInfo"></span>
+      </div>
+      <button class="btn btn-ghost" id="btnExport">Экспорт</button>
+      <label class="btn btn-ghost" style="cursor:pointer">Импорт
+        <input type="file" accept="application/json" id="fileImport" style="display:none">
+      </label>
+      <button class="btn btn-danger" id="btnWipe">Сброс</button>
+    </div>
+  </div>
 
+  <!-- Фильтр -->
   <div class="grid grid-2">
-    <!-- Фильтры -->
     <div class="card" id="filtersCard">
       <div class="section-title">Фильтр</div>
-      <div class="row" id="f_districts"></div>
-      <div class="row" id="f_quarters"></div>
+
       <div class="row">
         <div><label>Тип</label>
           <select id="f_type"><option value="">Любой</option><option value="flat">Квартира</option><option value="house">Дом</option><option value="land">Земля</option></select>
@@ -52,17 +93,70 @@ input[type=number]{width:130px}
           <select id="f_status"><option value="">Любой</option><option value="sale">Продаётся</option><option value="rent">Аренда</option></select>
         </div>
       </div>
+
+      <div class="section-title" style="margin-bottom:4px">Районы (можно несколько)</div>
+      <div class="row" id="f_districts" style="gap:8px"></div>
+
+      <div class="section-title" style="margin:10px 0 4px">Кварталы/махалли</div>
+      <div class="small" id="q_hint">Отметь районы — появится список из справочника. Можно добавлять новые в админке.</div>
+      <div class="row" id="f_quarters_box" style="gap:8px"></div>
+
       <div class="row">
-        <div><label>Цена от</label><input id="f_price_from" type="number"></div>
-        <div><label>до</label><input id="f_price_to" type="number"></div>
+        <div><label>Цена от</label><input id="f_price_from" type="number" min="0"></div>
+        <div><label>до</label><input id="f_price_to" type="number" min="0"></div>
+        <div><label>Валюта</label>
+          <select id="f_currency"><option value="USD">USD</option><option value="UZS">UZS</option></select>
+        </div>
       </div>
+
       <div class="row">
-        <div><label>Площадь от</label><input id="f_area_from" type="number"></div>
-        <div><label>до</label><input id="f_area_to" type="number"></div>
+        <div><label>Площадь от (м²)</label><input id="f_area_from" type="number" min="0"></div>
+        <div><label>до</label><input id="f_area_to" type="number" min="0"></div>
       </div>
+
       <div class="row">
+        <div><label>Комнат от</label><input id="f_rooms_from" type="number" min="1"></div>
+        <div><label>Комнат до</label><input id="f_rooms_to" type="number" min="1"></div>
+      </div>
+
+      <div class="row">
+        <div><label>Этаж от</label><input id="f_floor_from" type="number" min="1"></div>
+        <div><label>Этаж до</label><input id="f_floor_to" type="number" min="1"></div>
+      </div>
+
+      <div class="row">
+        <div><label>Этажность от</label><input id="f_floors_from" type="number" min="1"></div>
+        <div><label>Этажность до</label><input id="f_floors_to" type="number" min="1"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Парковка</label>
+          <select id="f_parking"><option value="">Любая</option><option value="yes">Есть</option><option value="no">Нет</option></select>
+        </div>
+        <div>
+          <label>Санузел</label>
+          <select id="f_bath"><option value="">Любой</option><option value="combined">Совмещённый</option><option value="separate">Раздельный</option><option value="multiple">Несколько</option></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Сортировка</label>
+          <select id="f_sort">
+            <option value="date_desc">По дате новые сначала</option>
+            <option value="date_asc">По дате старые сначала</option>
+            <option value="price_asc">Цена по возрастанию</option>
+            <option value="price_desc">Цена по убыванию</option>
+            <option value="area_asc">Площадь по возрастанию</option>
+            <option value="area_desc">Площадь по убыванию</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
         <button class="btn btn-primary" id="btnApply">Применить</button>
-        <button class="btn btn-ghost" id="btnReset">Сбросить</button>
+        <button class="btn btn-ghost" id="btnResetFilters">Сбросить фильтр</button>
       </div>
     </div>
 
@@ -70,41 +164,93 @@ input[type=number]{width:130px}
     <div class="card">
       <div class="section-title">Добавить объект</div>
       <div class="row">
+        <div><label>Тип</label>
+          <select id="a_type"><option value="flat">Квартира</option><option value="house">Дом</option><option value="land">Земля</option></select>
+        </div>
+        <div><label>Статус</label>
+          <select id="a_status"><option value="sale">Продаётся</option><option value="rent">Аренда</option></select>
+        </div>
+        <div style="flex:1"><label>Заголовок</label><input id="a_title" placeholder="Например: 4-комн, Юнусабад 9, ремонт"></div>
+      </div>
+
+      <div class="row">
         <div><label>Район</label><select id="a_district"></select></div>
-        <div><label>Квартал/махаля</label><input id="a_quarter"></div>
-        <div><label>Цена</label><input id="a_price" type="number"></div>
+        <div style="flex:1"><label>Квартал/махаля</label><input id="a_quarter" placeholder="например 9 квартал или С5"></div>
       </div>
+
       <div class="row">
-        <div><label>Комнаты</label><input id="a_rooms" type="number"></div>
-        <div><label>Площадь</label><input id="a_area" type="number"></div>
-        <div><label>Этаж</label><input id="a_floor" type="number"></div>
-        <div><label>Этажность</label><input id="a_floors" type="number"></div>
+        <div><label>Цена (USD)</label><input id="a_price" type="number" min="0"></div>
+        <div><label>Площадь (м²)</label><input id="a_area" type="number" min="0"></div>
+        <div><label>Комнат</label><input id="a_rooms" type="number" min="0"></div>
       </div>
+
       <div class="row">
-        <div><label>Фото URL (через запятую)</label><input id="a_photos"></div>
+        <div><label>Этаж</label><input id="a_floor" type="number" min="0"></div>
+        <div><label>Этажность</label><input id="a_floors" type="number" min="0"></div>
       </div>
+
       <div class="row">
-        <div><label>Telegram</label><input id="a_tg"></div>
+        <div>
+          <label>Парковка</label>
+          <select id="a_parking"><option value="">Не указано</option><option value="yes">Есть</option><option value="no">Нет</option></select>
+        </div>
+        <div>
+          <label>Санузел</label>
+          <select id="a_bath"><option value="">Не указано</option><option value="combined">Совмещённый</option><option value="separate">Раздельный</option><option value="multiple">Несколько</option></select>
+        </div>
       </div>
+
+      <div class="section-title">Локация на карте</div>
+      <div id="a_map" class="map-md"></div>
       <div class="row">
-        <div><label>Описание</label><textarea id="a_desc"></textarea></div>
+        <div><label>Широта</label><input id="a_lat" type="number" step="0.000001" placeholder="автозаполняется"></div>
+        <div><label>Долгота</label><input id="a_lng" type="number" step="0.000001" placeholder="автозаполняется"></div>
       </div>
+
+      <div class="row">
+        <div style="flex:1">
+          <label>Фото (загрузка файлов)</label>
+          <input id="a_files" type="file" accept="image/*" multiple>
+          <div class="small">Выбери фото. Ниже превью — можно удалять и менять порядок перетаскиванием.</div>
+          <div id="drafts" class="drafts"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1"><label>Фото по URL (через запятую, опционально)</label><input id="a_photos" placeholder="https://.../1.jpg, https://.../2.jpg"></div>
+      </div>
+
+      <div class="row">
+        <div><label>Телефон</label><input id="a_phone" placeholder="+998..."></div>
+        <div><label>Telegram username</label><input id="a_tg" placeholder="без @, например: Smeksy"></div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1"><label>Описание</label><textarea id="a_desc" rows="3" placeholder="Ключевые плюсы, что рядом"></textarea></div>
+      </div>
+
       <div class="row">
         <button class="btn btn-primary" id="btnAdd">Добавить</button>
-        <button class="btn btn-ghost" id="btnDemo">Демо</button>
+        <button class="btn btn-ghost" id="btnDemo">Демо-данные</button>
+        <button class="btn btn-danger" id="btnClearObjects">Очистить объекты</button>
       </div>
-    </div>
-  </div>
 
-  <!-- Редактор справочника -->
-  <div class="card">
-    <div class="section-title">Справочник локаций</div>
-    <div class="row">
-      <div><label>Район</label><select id="loc_district"></select></div>
-      <div><label>Новая локация</label><input id="loc_new"></div>
-      <button class="btn btn-primary" id="btnLocAdd">Добавить</button>
+      <div class="section-title" style="margin-top:16px">Справочник локаций (район → кварталы/махалли)</div>
+      <div class="small">Добавляй свои пункты: массивы (С5, С6), махалли и т. п. Они появятся в фильтрах сразу.</div>
+      <div class="row">
+        <div><label>Район</label><select id="loc_district"></select></div>
+        <div style="flex:1">
+          <label>Текущий список</label>
+          <div id="loc_list" class="chips"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex:1"><label>Новая локация</label><input id="loc_new" placeholder="например: С5"></div>
+        <button class="btn btn-primary" id="loc_add">Добавить в справочник</button>
+        <button class="btn btn-ghost" id="loc_reset">Сбросить к дефолту</button>
+      </div>
+      <div class="small">Справочник хранится в браузере и включается в экспорт JSON.</div>
     </div>
-    <div id="loc_list" class="row"></div>
   </div>
 
   <!-- Результаты -->
@@ -114,125 +260,529 @@ input[type=number]{width:130px}
       <div class="muted">Найдено: <span id="count">0</span></div>
     </div>
     <div id="results" class="list"></div>
+    <div id="empty" class="empty" style="display:none">Ничего не найдено.</div>
   </div>
 </div>
 
+<!-- Модалка просмотра -->
+<div id="modal" class="modal">
+  <div class="box">
+    <div class="head">
+      <div id="m_title" class="section-title">Объявление</div>
+      <button id="m_close" class="close">Закрыть</button>
+    </div>
+    <div class="body">
+      <div id="m_gallery"></div>
+      <div id="m_meta" class="muted"></div>
+      <div id="m_desc"></div>
+      <div id="m_map" class="map-md" style="display:none"></div>
+      <div id="m_actions" class="footer"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 <script>
-document.addEventListener("DOMContentLoaded",()=>{
-  let districts={
-    "Юнусабад":["1 квартал","2 квартал","3 квартал","4 квартал","5 квартал","6 квартал","7 квартал","8 квартал","9 квартал","10 квартал","11 квартал","12 квартал","13 квартал","14 квартал","15 квартал","16 квартал","17 квартал","18 квартал","19 квартал"],
-    "Чиланзар":Array.from({length:30},(_,i)=>(i+1)+" квартал"),
-    "Сергели":Array.from({length:10},(_,i)=>"Куйлюк "+(i+1)+" квартал"),
-    "Мирабад":[],
-    "Шайхантахур":[],
-    "Учтепа":[],
-    "Мирзо-Улугбек":[],
-    "Яккасарай":[],
-    "Алмазар":[],
-    "Бектемир":[],
-    "Яшнабад":[]
-  };
+(function(){
+  console.log("v1.5 init");
+
+  // ==== Константы и ключи ====
+  const DISTRICTS=["Юнусабад","Мирзо-Улугбек","Чиланзар","Шайхантахур","Яккасарай","Учтепа","Сергелийский","Алмазар","Бектемир","Мирабад","Яшнабад"];
+  const LS_OBJECTS="realty_objects_v7";
+  const LS_SETTINGS="realty_settings_v1";
+  const LS_LOCATIONS="realty_locations_v1";
+
+  // ==== Данные ====
   let objects=[];
+  let settings={currency:"USD", rate:12700};
+  let locations={}; // { district: [ "9 квартал", "С5", ... ] }
+  let galleryDraft=[];
 
+  // ==== Карты ====
+  let aMap, aMarker=null; // карта в админке
+  let mLeaf=null; // карта в модалке
+
+  // ==== Утилиты ====
   const $=id=>document.getElementById(id);
-  const el=(t,a={},h="")=>{const e=document.createElement(t);for(const k in a) e.setAttribute(k,a[k]);if(h)e.innerHTML=h;return e;};
+  const el=(t,a={},h="")=>{const e=document.createElement(t);for(const k in a){k==="class"?e.className=a[k]:e.setAttribute(k,a[k])} if(h) e.innerHTML=h; return e};
+  const esc=s=>(s||"").replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+  const typeLabel=t=>t==='flat'?'Квартира':t==='house'?'Дом':t==='land'?'Земля':'—';
+  const statusLabel=s=>s==='sale'?'Продаётся':s==='rent'?'Аренда':'—';
+  const fmtUSD=n=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);
+  const fmtUZS=n=>new Intl.NumberFormat('ru-RU').format(n)+" сум";
+  const toDisplayCurrency=usd=> (usd||usd===0)? (settings.currency==="USD"?fmtUSD(usd):fmtUZS(Math.round(usd*(settings.rate||12700)))) : "";
+  const normalizeFilterPrice=(val,cur)=>{const num=parseFloat(val);if(isNaN(num))return NaN;return cur==="USD"?num:num/(settings.rate||12700)};
+  const permalinkFor=o=> location.origin+location.pathname + "#id=" + encodeURIComponent(o.id);
+  const bathLabel=v=>v==="combined"?"совмещённый":v==="separate"?"раздельный":"несколько";
 
-  // --- Фильтры ---
-  function renderDistricts(){
-    $("f_districts").innerHTML="";$("a_district").innerHTML="";$("loc_district").innerHTML="";
-    Object.keys(districts).forEach(d=>{
-      const l=el("label");const cb=el("input",{type:"checkbox","data-district":d});
-      l.appendChild(cb);l.appendChild(document.createTextNode(" "+d));$("f_districts").appendChild(l);
-      $("a_district").appendChild(el("option",{value:d},d));
-      $("loc_district").appendChild(el("option",{value:d},d));
+  // ==== Загрузка/сохранение ====
+  function load(){
+    try{objects=JSON.parse(localStorage.getItem(LS_OBJECTS)||"[]")}catch(_){objects=[]}
+    try{settings=Object.assign(settings, JSON.parse(localStorage.getItem(LS_SETTINGS)||"{}"))}catch(_){}
+    $("s_currency").value=settings.currency;
+    $("s_rate").value=String(settings.rate||12700);
+    $("settingsInfo").textContent=`Показ: ${settings.currency}, курс ${settings.rate} UZS`;
+    // locations
+    try{locations=JSON.parse(localStorage.getItem(LS_LOCATIONS)||"{}")}catch(_){locations={}}
+    if(Object.keys(locations).length===0){
+      // дефолтный справочник
+      locations={
+        "Юнусабад": Array.from({length:19},(_,i)=>(i+1)+" квартал"),
+        "Чиланзар": Array.from({length:30},(_,i)=>(i+1)+" квартал"),
+        "Сергелийский": ["Куйлюк 1 квартал","Куйлюк 2 квартал","Куйлюк 3 квартал","Куйлюк 4 квартал","Куйлюк 5 квартал","Куйлюк 6 квартал","Куйлюк 7 квартал","Куйлюк 8 квартал","Куйлюк 9 квартал","Куйлюк 10 квартал"],
+        "Мирзо-Улугбек":[], "Шайхантахур":[], "Яккасарай":[], "Учтепа":[], "Алмазар":[], "Бектемир":[], "Мирабад":[], "Яшнабад":[]
+      };
+      saveLocations();
+    }
+  }
+  function save(){ localStorage.setItem(LS_OBJECTS, JSON.stringify(objects)); }
+  function saveSettings(){
+    settings.currency=$("s_currency").value;
+    settings.rate=parseFloat($("s_rate").value)||12700;
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+    $("settingsInfo").textContent=`Показ: ${settings.currency}, курс ${settings.rate} UZS`;
+    apply();
+  }
+  function saveLocations(){ localStorage.setItem(LS_LOCATIONS, JSON.stringify(locations)); }
+
+  // ==== Фильтры ====
+  function initDistricts(){
+    const box=$("f_districts"), selA=$("a_district"), selLoc=$("loc_district");
+    box.innerHTML=""; selA.innerHTML=""; selLoc.innerHTML="";
+    DISTRICTS.forEach(d=>{
+      const label=el("label");
+      const input=el("input",{type:"checkbox","data-district":d});
+      const span=el("span",{},d);
+      label.appendChild(input); label.appendChild(span); box.appendChild(label);
+      const o=el("option",{},d); o.value=d; selA.appendChild(o);
+      const o2=el("option",{},d); o2.value=d; selLoc.appendChild(o2);
+    });
+    $("f_districts").addEventListener("change",renderQuarterCheckboxes);
+    selLoc.addEventListener("change",renderLocList);
+  }
+
+  function renderQuarterCheckboxes(){
+    const chosen = Array.from($("f_districts").querySelectorAll("input[type=checkbox]:checked")).map(cb=>cb.getAttribute("data-district"));
+    const box=$("f_quarters_box");
+    const hint=$("q_hint");
+    box.innerHTML="";
+    if(chosen.length===0){ hint.textContent="Отметь районы — появится список из справочника. Можно добавлять новые в админке."; return; }
+    hint.textContent="Отметь нужные кварталы/махалли (можно несколько).";
+    // объединяем: справочник + то, что встречается в объектах
+    const set=new Set();
+    chosen.forEach(d=>{
+      (locations[d]||[]).forEach(q=>set.add(q));
+      objects.forEach(o=>{ if(o.district===d && o.quarter) set.add(o.quarter); });
+    });
+    Array.from(set).sort((a,b)=>a.localeCompare(b,'ru')).forEach(q=>{
+      const label=el("label");
+      const input=el("input",{type:"checkbox","data-quarter":q});
+      const span=el("span",{},q);
+      label.appendChild(input); label.appendChild(span); box.appendChild(label);
     });
   }
-  function renderQuarters(){
-    const chosen=Array.from($("f_districts").querySelectorAll("input:checked")).map(cb=>cb.getAttribute("data-district"));
-    const box=$("f_quarters");box.innerHTML="";
-    chosen.forEach(d=>(districts[d]||[]).forEach(q=>{
-      const l=el("label");const cb=el("input",{type:"checkbox","data-quarter":q});
-      l.appendChild(cb);l.appendChild(document.createTextNode(" "+d+" — "+q));box.appendChild(l);
-    }));
+
+  function getChosenDistricts(){
+    return Array.from($("f_districts").querySelectorAll("input[type=checkbox]:checked"))
+      .map(cb=>cb.getAttribute("data-district"));
+  }
+  function getChosenQuarters(){
+    return Array.from($("f_quarters_box").querySelectorAll("input[type=checkbox]:checked"))
+      .map(cb=>cb.getAttribute("data-quarter"));
   }
 
-  function applyFilter(){
-    let list=objects.slice();
-    const chosenD=Array.from($("f_districts").querySelectorAll("input:checked")).map(cb=>cb.getAttribute("data-district"));
-    const chosenQ=Array.from($("f_quarters").querySelectorAll("input:checked")).map(cb=>cb.getAttribute("data-quarter"));
-    const type=$("f_type").value,status=$("f_status").value;
-    const pf=parseFloat($("f_price_from").value)||0,pt=parseFloat($("f_price_to").value)||Infinity;
-    const af=parseFloat($("f_area_from").value)||0,at=parseFloat($("f_area_to").value)||Infinity;
-    list=list.filter(o=>{
-      if(type&&o.type!==type)return false;
-      if(status&&o.status!==status)return false;
-      if(chosenD.length&&!chosenD.includes(o.district))return false;
-      if(chosenQ.length&&!chosenQ.includes(o.quarter))return false;
-      if(o.price<pf||o.price>pt)return false;
-      if(o.area<af||o.area>at)return false;
+  function normalizeNumber(v){ const n=parseFloat(v); return isNaN(n)?NaN:n; }
+
+  function apply(){
+    const type=$("f_type").value, status=$("f_status").value;
+    const fcur=$("f_currency").value;
+    const price_from= normalizeFilterPrice($("f_price_from").value, fcur);
+    const price_to  = normalizeFilterPrice($("f_price_to").value,   fcur);
+    const area_from=normalizeNumber($("f_area_from").value), area_to=normalizeNumber($("f_area_to").value);
+    const rooms_from=parseInt($("f_rooms_from").value), rooms_to=parseInt($("f_rooms_to").value);
+    const floor_from=parseInt($("f_floor_from").value), floor_to=parseInt($("f_floor_to").value);
+    const floors_from=parseInt($("f_floors_from").value), floors_to=parseInt($("f_floors_to").value);
+    const fParking=$("f_parking").value, fBath=$("f_bath").value;
+    const sort=$("f_sort").value;
+    const chosenD=getChosenDistricts();
+    const chosenQ=getChosenQuarters();
+
+    let list=objects.filter(o=>{
+      if(type && o.type!==type) return false;
+      if(status && o.status!==status) return false;
+
+      if(chosenD.length>0 && !chosenD.includes(o.district)) return false;
+      if(chosenQ.length>0){
+        const oq=(o.quarter||"").toLowerCase();
+        let ok=false; for(const q of chosenQ){ if(oq.includes(q.toLowerCase())) { ok=true; break; } }
+        if(!ok) return false;
+      }
+
+      if(!isNaN(price_from) && o.price && o.price<price_from) return false;
+      if(!isNaN(price_to)   && o.price && o.price>price_to)   return false;
+      if(!isNaN(area_from)  && o.area  && o.area<area_from)   return false;
+      if(!isNaN(area_to)    && o.area  && o.area>area_to)     return false;
+
+      if(o.type==='flat'){
+        if(!isNaN(rooms_from)&& o.rooms && o.rooms<rooms_from) return false;
+        if(!isNaN(rooms_to)  && o.rooms && o.rooms>rooms_to)   return false;
+        if(!isNaN(floor_from)&& o.floor && o.floor<floor_from) return false;
+        if(!isNaN(floor_to)  && o.floor && o.floor>floor_to)   return false;
+        if(!isNaN(floors_from)&&o.floors&& o.floors<floors_from) return false;
+        if(!isNaN(floors_to)  &&o.floors&& o.floors>floors_to)   return false;
+      }
+
+      if(fParking && (o.parking||"")!==fParking) return false;
+      if(fBath && (o.bath||"")!==fBath) return false;
+
       return true;
     });
-    renderResults(list);
+
+    const sorters={
+      date_desc:(a,b)=>(b.created||0)-(a.created||0),
+      date_asc:(a,b)=>(a.created||0)-(b.created||0),
+      price_asc:(a,b)=>(a.price||0)-(b.price||0),
+      price_desc:(a,b)=>(b.price||0)-(a.price||0),
+      area_asc:(a,b)=>(a.area||0)-(b.area||0),
+      area_desc:(a,b)=>(b.area||0)-(a.area||0),
+    };
+    list.sort(sorters[sort] || (()=>0));
+
+    render(list);
   }
 
-  // --- Рендер результатов ---
-  function renderResults(list){
-    $("results").innerHTML="";$("count").textContent=list.length;
-    list.forEach(o=>{
-      const it=el("div",{class:"item",id:"obj-"+o.id});
-      it.appendChild(el("div",{class:"hdr"},`<b>${o.title}</b>`));
-      if(o.photos&&o.photos.length){it.appendChild(galleryNode(o.photos));}
-      it.appendChild(el("div",{class:"muted"},`${o.district}, ${o.quarter||""} • ${o.area||0} м² • ${o.price||0} $`));
-      if(o.desc) it.appendChild(el("div",{},o.desc));
-      if(o.tg){it.appendChild(el("div",{},`<a href="https://t.me/${o.tg}?text=${encodeURIComponent("Здравствуйте! Интересует объявление: "+location.href+"#id="+o.id)}" target="_blank" class="link">Написать в Telegram</a>`));}
-      $("results").appendChild(it);
-    });
+  function resetFilters(){
+    ["f_type","f_status","f_price_from","f_price_to","f_area_from","f_area_to","f_rooms_from","f_rooms_to","f_floor_from","f_floor_to","f_floors_from","f_floors_to","f_parking","f_bath","f_currency","f_sort"].forEach(id=>{$(id).value=""});
+    $("f_currency").value="USD"; $("f_sort").value="date_desc";
+    $("f_districts").querySelectorAll("input[type=checkbox]").forEach(cb=>cb.checked=false);
+    $("f_quarters_box").innerHTML="";
+    render(objects);
   }
+
+  // ==== Рендер списка ====
   function galleryNode(photos){
-    if(!photos.length)return null;let idx=0;
-    const g=el("div",{class:"gallery"});const img=el("img",{class:"thumb",src:photos[0]});
-    const prev=el("div",{class:"nav prev"},"‹");const next=el("div",{class:"nav next"},"›");
+    if(!photos||!photos.length) return null;
+    let idx=0;
+    const g=el("div",{class:"gallery"});
+    const img=el("img",{class:"thumb",src:photos[0],alt:"photo"});
+    const prev=el("div",{class:"nav prev"},"‹");
+    const next=el("div",{class:"nav next"},"›");
     const counter=el("div",{class:"counter"},"Фото 1/"+photos.length);
     const upd=()=>{img.src=photos[idx];counter.textContent="Фото "+(idx+1)+"/"+photos.length;};
-    prev.onclick=()=>{idx=(idx-1+photos.length)%photos.length;upd();};
-    next.onclick=()=>{idx=(idx+1)%photos.length;upd();};
-    g.appendChild(img);g.appendChild(prev);g.appendChild(next);g.appendChild(counter);
+    prev.addEventListener("click",()=>{idx=(idx-1+photos.length)%photos.length;upd();});
+    next.addEventListener("click",()=>{idx=(idx+1)%photos.length;upd();});
+    g.appendChild(img); if(photos.length>1){ g.appendChild(prev); g.appendChild(next); g.appendChild(counter); }
     return g;
   }
 
-  // --- Добавление объекта ---
-  function addObject(){
-    const d=$("a_district").value,q=$("a_quarter").value.trim();
-    const p=parseFloat($("a_price").value)||0;
-    const r=parseInt($("a_rooms").value)||0,a=parseFloat($("a_area").value)||0,f=parseInt($("a_floor").value)||0,fs=parseInt($("a_floors").value)||0;
-    const phs=$("a_photos").value.split(",").map(s=>s.trim()).filter(Boolean);
-    const tg=$("a_tg").value.trim(),desc=$("a_desc").value.trim();
-    const o={id:Date.now()+"",title:`Объект в ${d}`,district:d,quarter:q,price:p,area:a,rooms:r,floor:f,floors:fs,photos:phs,tg:tg,desc:desc,type:"flat",status:"sale"};
-    objects.push(o);applyFilter();
-  }
-  function demo(){
-    if(objects.length)return;
-    objects=[
-      {id:"1",title:"5-комн, Юнусабад 9",district:"Юнусабад",quarter:"9 квартал",price:120000,area:106,rooms:5,floor:3,floors:4,photos:["https://picsum.photos/seed/a1/600/400"],tg:"Smeksy",desc:"Банковская планировка, ремонт"},
-      {id:"2",title:"2-комн, Сергели, Куйлюк 5",district:"Сергели",quarter:"Куйлюк 5 квартал",price:600,area:65,rooms:2,floor:5,floors:9,photos:["https://picsum.photos/seed/b1/600/400"],tg:"Smeksy",desc:"Светлая, рядом школа"},
-      {id:"3",title:"Дом, Чиланзар 20 квартал",district:"Чиланзар",quarter:"20 квартал",price:95000,area:120,rooms:4,floor:1,floors:2,photos:["https://picsum.photos/seed/c1/600/400"],tg:"Smeksy",desc:"Кирпич, двор"}
-    ];
-    applyFilter();
+  function render(list=objects){
+    const res=$("results"), empty=$("empty");
+    res.innerHTML=""; $("count").textContent=String(list.length);
+    empty.style.display=list.length?"none":"block";
+    list.forEach(o=>{
+      const it=el("div",{class:"item", id:`card-${o.id}`});
+      const head=el("div",{class:"row"});
+      head.innerHTML=`
+        <div class="pill">${typeLabel(o.type)}</div>
+        <div class="pill">${statusLabel(o.status)}</div>
+        <div class="pill">${o.district}${o.quarter?(", "+esc(o.quarter)):""}</div>
+        ${o.type==='flat'&&o.rooms?`<div class="pill">${o.rooms} комн</div>`:""}
+        ${o.type==='flat'&&(o.floor||o.floors)?`<div class="pill">этаж ${o.floor||"-"}/${o.floors||"-"}</div>`:""}
+        ${o.parking?`<div class="pill">Парковка: ${o.parking==='yes'?'есть':'нет'}</div>`:""}
+        ${o.bath?`<div class="pill">С/у: ${bathLabel(o.bath)}</div>`:""}
+      `;
+      const titleLink=el("a",{href:"#",class:"section-title"},esc(o.title||"Без названия"));
+      titleLink.addEventListener("click",(e)=>{e.preventDefault(); openModal(o);});
+      const meta=el("div",{class:"muted"},`Площадь: ${o.area?o.area+" м²":"—"} • <span class="price">${(o.price||o.price===0)?toDisplayCurrency(o.price):"Цена не указана"}</span>`);
+      const gal=galleryNode(o.photos);
+      const actions=el("div",{class:"footer"});
+      const openBtn=el("button",{class:"btn btn-ghost"},"Открыть"); openBtn.addEventListener("click",()=>openModal(o));
+      const copyBtn=el("button",{class:"btn btn-ghost"},"Скопировать ссылку");
+      copyBtn.addEventListener("click",async()=>{ try{ await navigator.clipboard.writeText(permalinkFor(o)); copyBtn.textContent="Ссылка скопирована!"; setTimeout(()=>copyBtn.textContent="Скопировать ссылку",1200);}catch(_){alert("Не удалось скопировать");}});
+      const del=el("button",{class:"btn btn-danger"},"Удалить"); del.addEventListener("click",()=>{ if(confirm("Удалить объявление?")){ objects=objects.filter(x=>x.id!==o.id); save(); apply(); }});
+      actions.appendChild(openBtn);
+      actions.appendChild(el("a",{href:permalinkFor(o),class:"link"},"Ссылка"));
+      actions.appendChild(copyBtn);
+      actions.appendChild(del);
+
+      it.appendChild(head);
+      it.appendChild(titleLink);
+      if(gal) it.appendChild(gal);
+      it.appendChild(meta);
+      it.appendChild(actions);
+      res.appendChild(it);
+    });
+
+    if(location.hash.startsWith("#id=")){
+      const id=decodeURIComponent(location.hash.slice(4));
+      const elCard = document.getElementById(`card-${id}`);
+      if(elCard) elCard.scrollIntoView({behavior:"smooth", block:"start"});
+    }
   }
 
-  // --- Редактор справочника ---
-  function renderLocList(){
-    const d=$("loc_district").value;const box=$("loc_list");box.innerHTML="";
-    (districts[d]||[]).forEach(q=>{
-      const span=el("span",{class:"pill"},q+" ✕");
-      span.onclick=()=>{districts[d]=districts[d].filter(x=>x!==q);renderLocList();renderQuarters();};
-      box.appendChild(span);
+  // ==== Модалка ====
+  let m, m_close, m_title, m_gallery, m_meta, m_desc, m_map, m_actions;
+  function initModal(){
+    m=$("modal"); m_close=$("m_close"); m_title=$("m_title"); m_gallery=$("m_gallery"); m_meta=$("m_meta"); m_desc=$("m_desc"); m_map=$("m_map"); m_actions=$("m_actions");
+    m_close.addEventListener("click",closeModal);
+    m.addEventListener("click",(e)=>{ if(e.target===m) closeModal(); });
+  }
+  function openModal(o){
+    m_title.textContent=o.title||"Без названия";
+    m_gallery.innerHTML=""; m_meta.innerHTML=""; m_desc.innerHTML=""; m_actions.innerHTML="";
+    const g=galleryNode(o.photos); if(g) m_gallery.appendChild(g);
+    m_meta.innerHTML = `
+      <div>Тип: <b>${typeLabel(o.type)}</b>, статус: <b>${statusLabel(o.status)}</b></div>
+      <div>Адрес: <b>${esc(o.district)}${o.quarter?(", "+esc(o.quarter)):""}</b></div>
+      <div>Площадь: <b>${o.area||"-"} м²</b> • Цена: <b>${(o.price||o.price===0)?toDisplayCurrency(o.price):"не указана"}</b></div>
+      ${o.type==='flat'?`<div>Комнат: <b>${o.rooms||"-"}</b> • Этаж: <b>${o.floor||"-"}</b> / <b>${o.floors||"-"}</b></div>`:""}
+      ${o.parking?`<div>Парковка: <b>${o.parking==='yes'?'есть':'нет'}</b></div>`:""}
+      ${o.bath?`<div>С/у: <b>${bathLabel(o.bath)}</b></div>`:""}
+    `;
+    if(o.desc) m_desc.textContent=o.desc;
+
+    if(o.lat && o.lng){
+      m_map.style.display="block";
+      setTimeout(()=>{
+        if(mLeaf){ mLeaf.remove(); mLeaf=null; }
+        mLeaf = L.map('m_map').setView([o.lat,o.lng], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mLeaf);
+        L.marker([o.lat,o.lng]).addTo(mLeaf);
+      }, 50);
+    }else{
+      m_map.style.display="none";
+      if(mLeaf){ mLeaf.remove(); mLeaf=null; }
+    }
+
+    if(o.phone) m_actions.appendChild(el("a",{href:`tel:${o.phone}`,class:"link"},"Позвонить"));
+    if(o.tg){
+      const text=encodeURIComponent(`Здравствуйте! Интересует объявление: ${permalinkFor(o)}`);
+      const tg=`https://t.me/${encodeURIComponent(o.tg)}?text=${text}`;
+      m_actions.appendChild(el("a",{href:tg,target:"_blank",rel:"noopener",class:"link"},"Написать в Telegram"));
+    }
+    m_actions.appendChild(el("a",{href:permalinkFor(o),class:"link"},"Ссылка"));
+    const copyBtn=el("button",{class:"btn btn-ghost"},"Скопировать ссылку");
+    copyBtn.addEventListener("click",async()=>{ try{ await navigator.clipboard.writeText(permalinkFor(o)); copyBtn.textContent="Скопировано!"; setTimeout(()=>copyBtn.textContent="Скопировать ссылку",1200);}catch(_){alert("Не удалось скопировать");}});
+    m_actions.appendChild(copyBtn);
+    const del=el("button",{class:"btn btn-danger"},"Удалить");
+    del.addEventListener("click",()=>{ if(confirm("Удалить объявление?")){ objects=objects.filter(x=>x.id!==o.id); save(); closeModal(); apply(); }});
+    m_actions.appendChild(del);
+
+    m.style.display="flex";
+  }
+  function closeModal(){ m.style.display="none"; if(mLeaf){ mLeaf.remove(); mLeaf=null; } }
+
+  // ==== Работа с фото (админка) ====
+  function renderDrafts(){
+    const box=$("drafts"); box.innerHTML="";
+    galleryDraft.forEach((it,idx)=>{
+      const d=el("div",{class:"draft",draggable:"true","data-idx":idx});
+      const img=el("img",{src:it.dataURL,alt:"photo"});
+      const x=el("div",{class:"x"},"✕");
+      x.addEventListener("click",()=>{ galleryDraft.splice(idx,1); renderDrafts(); });
+      d.appendChild(img); d.appendChild(x);
+
+      d.addEventListener("dragstart",e=>{ d.classList.add("drag"); e.dataTransfer.setData("text/plain", String(idx)); });
+      d.addEventListener("dragend",()=>{ d.classList.remove("drag"); });
+      d.addEventListener("dragover",e=>{ e.preventDefault(); d.classList.add("drag"); });
+      d.addEventListener("dragleave",()=>{ d.classList.remove("drag"); });
+      d.addEventListener("drop",e=>{
+        e.preventDefault();
+        const from=Number(e.dataTransfer.getData("text/plain"));
+        const to=idx;
+        if(from===to) return;
+        const [moved]=galleryDraft.splice(from,1);
+        galleryDraft.splice(to,0,moved);
+        renderDrafts();
+      });
+
+      box.appendChild(d);
     });
   }
+  async function filesToDataURLs(files){
+    const arr=[];
+    for(const f of files){
+      const data = await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f); });
+      arr.push({dataURL:data, id:Date.now()+"-"+Math.random().toString(16).slice(2)});
+    }
+    return arr;
+  }
+  async function handleFiles(){
+    const input=$("a_files");
+    const files=input.files;
+    if(!files || !files.length) return;
+    const items = await filesToDataURLs(files);
+    galleryDraft = galleryDraft.concat(items);
+    input.value="";
+    renderDrafts();
+  }
 
-  $("btnApply").onclick=applyFilter;
-  $("btnReset").onclick=()=>{document.querySelectorAll("#filtersCard input").forEach(i=>i.checked=false);$("f_type").value="";$("f_status").value="";$("f_price_from").value="";$("f_price_to").value="";$("f_area_from").value="";$("f_area_to").value="";applyFilter();};
-  $("btnAdd").onclick=addObject;
-  $("btnDemo").onclick=demo;
-  $("f_districts").addEventListener("change",renderQuarters);
-  $("loc_district").addEventListener("change",renderLoc
+  // ==== Добавление/удаление объектов ====
+  async function addObject(){
+    const urlsRaw=$("a_photos").value.trim();
+    const urlPhotos = urlsRaw? urlsRaw.split(",").map(s=>s.trim()).filter(Boolean) : [];
+    const draftPhotos = galleryDraft.map(x=>x.dataURL);
+
+    const o={
+      id:String(Date.now()),
+      created:Date.now(),
+      type:$("a_type").value, status:$("a_status").value, title:$("a_title").value.trim(),
+      district:$("a_district").value, quarter:$("a_quarter").value.trim(),
+      price:parseFloat($("a_price").value)||0, area:parseFloat($("a_area").value)||0,
+      rooms:parseInt($("a_rooms").value)||0, floor:parseInt($("a_floor").value)||0, floors:parseInt($("a_floors").value)||0,
+      parking:$("a_parking").value, bath:$("a_bath").value,
+      photos:[...draftPhotos, ...urlPhotos],
+      phone:$("a_phone").value.trim(), tg:$("a_tg").value.trim(),
+      lat: parseFloat($("a_lat").value)||null, lng: parseFloat($("a_lng").value)||null,
+      desc:$("a_desc").value.trim()
+    };
+    objects.push(o); save();
+
+    ["a_title","a_quarter","a_price","a_area","a_rooms","a_floor","a_floors","a_photos","a_phone","a_tg","a_desc","a_lat","a_lng"].forEach(id=>{$(id).value=""});
+    ["a_parking","a_bath"].forEach(id=>{$(id).value=""});
+    $("a_files").value="";
+    galleryDraft=[]; renderDrafts();
+
+    renderQuarterCheckboxes();
+    apply();
+  }
+
+  function clearObjects(){ if(confirm("Точно удалить все объекты?")){ objects=[]; save(); render(objects); renderQuarterCheckboxes(); } }
+
+  // ==== Экспорт/импорт ====
+  function exportJSON(){
+    const payload={ objects, locations, settings };
+    const data=JSON.stringify(payload,null,2);
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data],{type:"application/json"})); a.download="realty_backup.json"; a.click();
+  }
+  function importJSON(file){
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const obj=JSON.parse(r.result);
+        if(obj && typeof obj==="object"){
+          if(Array.isArray(obj)) { // старые бэкапы
+            objects=obj;
+          } else {
+            objects=Array.isArray(obj.objects)?obj.objects:[];
+            locations=(obj.locations && typeof obj.locations==="object")?obj.locations:locations;
+            if(obj.settings && typeof obj.settings==="object") settings=Object.assign(settings,obj.settings);
+          }
+          save(); saveLocations(); localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+          $("s_currency").value=settings.currency; $("s_rate").value=String(settings.rate||12700);
+          $("settingsInfo").textContent=`Показ: ${settings.currency}, курс ${settings.rate} UZS`;
+          initDistricts(); renderLocUI(); renderQuarterCheckboxes(); apply();
+          alert("Импортировано");
+        } else alert("Неверный формат");
+      }catch(_){ alert("Ошибка при импорте"); }
+    };
+    r.readAsText(file);
+  }
+
+  // ==== Справочник локаций (админка) ====
+  function renderLocList(){
+    const d=$("loc_district").value;
+    const box=$("loc_list"); box.innerHTML="";
+    (locations[d]||[]).forEach((name,idx)=>{
+      const chip=el("div",{class:"chip"});
+      chip.appendChild(document.createTextNode(name));
+      const x=el("button",{class:"x"},"✕");
+      x.addEventListener("click",()=>{ locations[d].splice(idx,1); saveLocations(); renderLocList(); renderQuarterCheckboxes(); });
+      chip.appendChild(x);
+      box.appendChild(chip);
+    });
+  }
+  function renderLocUI(){
+    // заполняем селектор районов в двух местах
+    const selLoc=$("loc_district"), selA=$("a_district");
+    selLoc.innerHTML=""; selA.innerHTML="";
+    DISTRICTS.forEach(d=>{
+      const o=el("option",{},d); o.value=d; selLoc.appendChild(o);
+      const o2=el("option",{},d); o2.value=d; selA.appendChild(o2);
+    });
+    renderLocList();
+  }
+  function addLocItem(){
+    const d=$("loc_district").value;
+    const v=($("loc_new").value||"").trim();
+    if(!v) return;
+    locations[d]=locations[d]||[];
+    if(!locations[d].includes(v)){ locations[d].push(v); saveLocations(); $("loc_new").value=""; renderLocList(); renderQuarterCheckboxes(); }
+  }
+  function resetLocDefault(){
+    if(!confirm("Сбросить справочник к значениям по умолчанию?")) return;
+    localStorage.removeItem(LS_LOCATIONS);
+    locations={}; // будет восстановлен при load() при перезагрузке, но сделаем тут же:
+    locations={
+      "Юнусабад": Array.from({length:19},(_,i)=>(i+1)+" квартал"),
+      "Чиланзар": Array.from({length:30},(_,i)=>(i+1)+" квартал"),
+      "Сергелийский": ["Куйлюк 1 квартал","Куйлюк 2 квартал","Куйлюк 3 квартал","Куйлюк 4 квартал","Куйлюк 5 квартал","Куйлюк 6 квартал","Куйлюк 7 квартал","Куйлюк 8 квартал","Куйлюк 9 квартал","Куйлюк 10 квартал"],
+      "Мирзо-Улугбек":[], "Шайхантахур":[], "Яккасарай":[], "Учтепа":[], "Алмазар":[], "Бектемир":[], "Мирабад":[], "Яшнабад":[]
+    };
+    saveLocations(); renderLocUI(); renderQuarterCheckboxes();
+  }
+
+  // ==== Демо-данные ====
+  function demo(){
+    if(objects.length>0) return;
+    objects=[
+      {id:"1",created:Date.now()-400000,type:"flat",status:"sale",title:"5-комн, Юнусабад 9, ремонт",district:"Юнусабад",quarter:"9 квартал",price:120000,area:106,rooms:5,floor:3,floors:4,parking:"yes",bath:"separate",
+        photos:["https://picsum.photos/seed/a1/600/400","https://picsum.photos/seed/a2/600/400"],phone:"+998901234567",tg:"Smeksy",lat:41.366, lng:69.286, desc:"Банковская планировка, 2 санузла, парковка"},
+      {id:"2",created:Date.now()-300000,type:"flat",status:"rent",title:"2-комн, Сергели, Куйлюк 5",district:"Сергелийский",quarter:"Куйлюк 5 квартал",price:600,area:65,rooms:2,floor:5,floors:9,parking:"no",bath:"combined",
+        photos:["https://picsum.photos/seed/b1/600/400"],phone:"+998931112233",tg:"Smeksy",lat:41.246, lng:69.214, desc:"Светлая, рядом школа и метро"},
+      {id:"3",created:Date.now()-200000,type:"house",status:"sale",title:"Дом, Шайхантахур, Чорсу",district:"Шайхантахур",quarter:"Чорсу",price:95000,area:120,rooms:4,parking:"yes",bath:"multiple",
+        photos:["https://picsum.photos/seed/c1/600/400"],phone:"",tg:"",lat:41.327, lng:69.23, desc:"Можно жить, кирпич, двор"}
+    ];
+    save();
+  }
+
+  // ==== Старт ====
+  document.addEventListener("DOMContentLoaded", ()=>{
+    load();
+    initModal();
+    initDistricts();
+    renderLocUI();
+
+    // карта админки
+    aMap = L.map('a_map').setView([41.32,69.25], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(aMap);
+    aMap.on('click',(e)=>{
+      const lat=e.latlng.lat, lng=e.latlng.lng;
+      $("a_lat").value=lat.toFixed(6);
+      $("a_lng").value=lng.toFixed(6);
+      if(!aMarker){ aMarker=L.marker(e.latlng,{draggable:true}).addTo(aMap); aMarker.on('dragend',()=>{ const p=aMarker.getLatLng(); $("a_lat").value=p.lat.toFixed(6); $("a_lng").value=p.lng.toFixed(6); }); }
+      else { aMarker.setLatLng(e.latlng); }
+    });
+
+    render(objects);
+    renderQuarterCheckboxes();
+
+    // Кнопки
+    $("btnApply").addEventListener("click",apply);
+    $("btnResetFilters").addEventListener("click",resetFilters);
+    $("btnAdd").addEventListener("click",()=>{addObject().catch(console.error)});
+    $("btnDemo").addEventListener("click",()=>{ if(confirm("Заполнить демо? (добавится к текущим)")){ demo(); renderQuarterCheckboxes(); apply(); }});
+    $("btnClearObjects").addEventListener("click",clearObjects);
+    $("btnExport").addEventListener("click",exportJSON);
+    $("fileImport").addEventListener("change",e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); });
+    $("btnWipe").addEventListener("click",()=>{ if(confirm("Сбросить всё (объекты и фильтры)?")){ localStorage.removeItem(LS_OBJECTS); objects=[]; render(objects); renderQuarterCheckboxes(); }});
+    $("a_files").addEventListener("change",()=>{handleFiles().catch(console.error)});
+    $("btnSaveSettings").addEventListener("click",saveSettings);
+
+    $("loc_add").addEventListener("click",addLocItem);
+    $("loc_reset").addEventListener("click",resetLocDefault);
+
+    // Открытие по ссылке #id=...
+    if (location.hash.startsWith("#id=")) {
+      const id = decodeURIComponent(location.hash.slice(4));
+      if (!objects.length) demo(); // если пусто — подтянем демо, чтобы ссылка работала
+      setTimeout(()=>{
+        const obj = objects.find(o=>o.id===id);
+        if(obj){ render([obj]); const card=$("card-"+id); if(card) card.scrollIntoView({behavior:"smooth"}); }
+      }, 400);
+    }
+  });
+})();
+</script>
+</body>
+</html>
