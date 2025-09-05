@@ -1,6 +1,7 @@
 let objects = [];
 let map;
 let markers = [];
+let tempMarker = null;
 
 // Инициализация карты
 function initMap() {
@@ -9,12 +10,22 @@ function initMap() {
         attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
 
-    // Клик по карте для выбора координат
     map.on("click", function (e) {
         const lat = e.latlng.lat.toFixed(6);
         const lng = e.latlng.lng.toFixed(6);
         document.getElementById("lat").value = lat;
         document.getElementById("lng").value = lng;
+
+        if (tempMarker) {
+            tempMarker.setLatLng([lat, lng]);
+        } else {
+            tempMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+            tempMarker.on("dragend", function (ev) {
+                const pos = ev.target.getLatLng();
+                document.getElementById("lat").value = pos.lat.toFixed(6);
+                document.getElementById("lng").value = pos.lng.toFixed(6);
+            });
+        }
     });
 }
 
@@ -23,7 +34,7 @@ function renderMarkers(filteredObjects) {
     markers.forEach(m => map.removeLayer(m));
     markers = [];
 
-    filteredObjects.forEach(obj => {
+    filteredObjects.forEach((obj, index) => {
         if (!obj.lat || !obj.lng) return;
 
         const marker = L.marker([obj.lat, obj.lng]).addTo(map);
@@ -39,15 +50,29 @@ function renderMarkers(filteredObjects) {
         }
 
         if (obj.contact) {
-            popupContent += `<a href="${obj.contact}" target="_blank">Связаться</a>`;
+            popupContent += `<a href="${obj.contact}" target="_blank">Связаться</a><br>`;
         }
+
+        popupContent += `<button onclick="scrollToCard(${index})">Подробнее</button>`;
 
         marker.bindPopup(popupContent);
         markers.push(marker);
     });
 }
 
-// Применение фильтра
+// Скролл к карточке
+function scrollToCard(index) {
+    const cards = document.querySelectorAll(".result-card");
+    if (cards[index]) {
+        cards[index].scrollIntoView({ behavior: "smooth", block: "center" });
+        cards[index].style.background = "#eaffea";
+        setTimeout(() => {
+            cards[index].style.background = "white";
+        }, 1500);
+    }
+}
+
+// Фильтрация
 function applyFilter() {
     const category = document.getElementById("filterCategory").value;
     const status = document.getElementById("filterStatus").value;
@@ -71,7 +96,6 @@ function applyFilter() {
     renderMarkers(filtered);
 }
 
-// Сброс фильтра
 function resetFilter() {
     document.getElementById("filterCategory").value = "Любая";
     document.getElementById("filterStatus").value = "Любой";
@@ -84,7 +108,7 @@ function resetFilter() {
     renderMarkers(objects);
 }
 
-// Отображение списка объявлений
+// Отображение карточек
 function renderResults(list) {
     const resultsDiv = document.getElementById("resultsList");
     resultsDiv.innerHTML = "";
@@ -94,7 +118,7 @@ function renderResults(list) {
         return;
     }
 
-    list.forEach(obj => {
+    list.forEach((obj, idx) => {
         let card = document.createElement("div");
         card.className = "result-card";
 
@@ -105,19 +129,30 @@ function renderResults(list) {
         `;
 
         if (obj.photos && obj.photos.length > 0) {
-            let gallery = document.createElement("div");
-            gallery.className = "photo-gallery";
+            let slider = document.createElement("div");
+            slider.className = "photo-slider";
+            slider.dataset.index = "0"; // текущая картинка
 
-            obj.photos.forEach(src => {
-                let img = document.createElement("img");
-                img.src = src;
-                img.width = 120;
-                img.height = 90;
-                img.style.objectFit = "cover";
-                img.style.margin = "5px";
-                gallery.appendChild(img);
-            });
-            card.appendChild(gallery);
+            let img = document.createElement("img");
+            img.src = obj.photos[0];
+            img.className = "slider-img";
+            slider.appendChild(img);
+
+            // кнопки
+            let prevBtn = document.createElement("button");
+            prevBtn.innerText = "◀";
+            prevBtn.className = "slider-btn prev";
+            prevBtn.onclick = () => changeSlide(slider, obj.photos, -1);
+
+            let nextBtn = document.createElement("button");
+            nextBtn.innerText = "▶";
+            nextBtn.className = "slider-btn next";
+            nextBtn.onclick = () => changeSlide(slider, obj.photos, 1);
+
+            slider.appendChild(prevBtn);
+            slider.appendChild(nextBtn);
+
+            card.appendChild(slider);
         }
 
         if (obj.contact) {
@@ -126,6 +161,14 @@ function renderResults(list) {
 
         resultsDiv.appendChild(card);
     });
+}
+
+// Логика переключения слайдов
+function changeSlide(slider, photos, direction) {
+    let index = parseInt(slider.dataset.index);
+    index = (index + direction + photos.length) % photos.length;
+    slider.dataset.index = index;
+    slider.querySelector(".slider-img").src = photos[index];
 }
 
 // Добавление нового объекта
@@ -154,6 +197,11 @@ function addObject() {
     renderResults(objects);
     renderMarkers(objects);
 
+    if (tempMarker) {
+        map.removeLayer(tempMarker);
+        tempMarker = null;
+    }
+
     document.getElementById("addForm").reset();
 }
 
@@ -161,8 +209,6 @@ function addObject() {
 window.onload = () => {
     initMap();
     renderResults(objects);
-
-    // фикс карты — ждём полной готовности
     map.whenReady(() => {
         map.invalidateSize();
     });
