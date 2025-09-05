@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Realty v1.8.5-crud</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"/>
+  <style>
+    body { font-family:sans-serif; margin:0; display:flex; flex-direction:column; height:100vh; }
+    header { background:#2563eb; color:#fff; padding:10px; font-size:18px; }
+    main { flex:1; display:flex; overflow:hidden; }
+    section { flex:1; padding:10px; overflow:auto; }
+    #mapMain { height:400px; margin-bottom:10px; }
+    .filters, .admin, .results { margin-bottom:20px; padding:10px; border:1px solid #ccc; border-radius:6px; }
+    .filters h3, .admin h3 { margin-top:0; }
+    .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .col { flex:1 1 200px; }
+    .item { border:1px solid #ddd; padding:8px; margin-bottom:8px; border-radius:6px; }
+    .item .hdr { display:flex; justify-content:space-between; font-weight:bold; }
+    .chip { display:inline-block; background:#eee; padding:2px 6px; margin:2px; border-radius:4px; font-size:12px; }
+    .gallery img { width:80px; height:60px; object-fit:cover; margin:3px; border-radius:4px; border:1px solid #aaa; }
+    .inline { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .btn { padding:4px 8px; margin:2px; border:1px solid #ccc; background:#f8f8f8; cursor:pointer; border-radius:4px; }
+    .btn:hover { background:#eee; }
+    .btn-danger { background:#fdd; border-color:#f99; }
+    .node-row { display:flex; align-items:center; gap:6px; margin:2px 0; }
+    .tree { list-style:none; padding-left:16px; }
+    .node-label { width:140px; }
+    .fieldbox { padding:6px; background:#f9f9f9; margin:4px 0; border-radius:4px; font-size:13px; }
+    .pill { margin-right:8px; font-size:13px; }
+    .tag-check { display:block; margin:2px 0; }
+    .thumb { position:relative; display:inline-block; }
+    .thumb img { width:70px; height:50px; object-fit:cover; border:1px solid #aaa; border-radius:4px; }
+    .thumb button { position:absolute; top:-4px; right:-4px; background:#f33; color:#fff; border:none; border-radius:50%; width:18px; height:18px; cursor:pointer; font-size:12px; }
+    .hdr-inline { display:flex; gap:6px; align-items:center; }
+    .hdr-inline input { border:1px solid #ccc; padding:2px 4px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <header>🏠 Realty v1.8.5-crud</header>
+  <main>
+    <section>
+      <div class="filters">
+        <h3>Фильтры</h3>
+        <div class="row">
+          <div class="col"><label>Группа</label><select id="filterGroup"></select></div>
+          <div class="col"><label>Категория</label><select id="filterCategory"></select></div>
+          <div class="col"><label>Статус</label><select id="filterStatus"></select></div>
+        </div>
+        <div id="dynamicFilters" class="row"></div>
+        <div class="row">
+          <button class="btn" onclick="applyFilters()">Применить</button>
+          <button class="btn" onclick="resetFilters()">Сбросить</button>
+        </div>
+      </div>
+      <div id="mapMain"></div>
+      <div class="results" id="results"></div>
+    </section>
+    <section class="admin">
+      <h3>Админка</h3>
+      <button class="btn" onclick="addRoot()">+ Группа</button>
+      <ul id="tree" class="tree"></ul>
+      <h3 id="adminObjects">Объекты</h3>
+      <div class="row">
+        <div class="col"><label>Группа</label><select id="addGroup"></select></div>
+        <div class="col"><label>Категория</label><select id="addCategory"></select></div>
+        <div class="col"><label>Статус</label><select id="addStatus"></select></div>
+      </div>
+      <div id="dynamicFormFields" class="row"></div>
+      <div class="row">
+        <div class="col"><label>Lat</label><input id="addLat" placeholder="lat"></div>
+        <div class="col"><label>Lng</label><input id="addLng" placeholder="lng"></div>
+      </div>
+      <div><label>Фото</label><input type="file" id="addPhotos" multiple></div>
+      <div id="photoPreview" class="inline"></div>
+      <div class="row">
+        <button class="btn" onclick="saveObject()">💾 Сохранить</button>
+        <button class="btn" onclick="resetForm()">Очистить</button>
+      </div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+    // хранилище
+    let objects = JSON.parse(localStorage.getItem("objects_v185")||"[]");
+    function persistObjects(){ localStorage.setItem("objects_v185", JSON.stringify(objects)); }
+
+    let cmsTree = JSON.parse(localStorage.getItem("cms_tree_v185")||"null");
+    if(!cmsTree){
+      cmsTree = [
+        { id:uid(), kind:"group", label:"Недвижимость", children:[
+          { id:uid(), kind:"category", label:"Квартира", children:[
+            { id:uid(), kind:"status", label:"Аренда", children:[] },
+            { id:uid(), kind:"status", label:"Продажа", children:[] }
+          ]}
+        ]}
+      ];
+      persistTree();
+    }
+    function persistTree(){ localStorage.setItem("cms_tree_v185", JSON.stringify(cmsTree)); }
+
+    function walk(nodes, fn, parents=[]){
+      if(!nodes) return;
+      for(const n of nodes){
+        fn(n, parents);
+        if(n.children?.length) walk(n.children, fn, [...parents,n]);
+      }
+    }
+    function findNodeById(id){ let res=null; walk(cmsTree,(n)=>{ if(n.id===id) res=n; }); return res; }
+    function removeNodeById(list,id){
+      for(let i=0;i<list.length;i++){
+        if(list[i].id===id){ list.splice(i,1); return true; }
+        if(list[i].children && removeNodeById(list[i].children,id)) return true;
+      }
+      return false;
+    }
+
+    const map = L.map("mapMain").setView([41.3111,69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+    let markersLayer = L.layerGroup().addTo(map);
+  </script>
+  <script>
+    function renderTreeUI(){
+      const root=$("tree"); root.innerHTML="";
+      cmsTree.forEach(n=> root.appendChild(renderNode(n)));
+      persistTree(); rebuildRoleSelects();
+    }
+
+    function renderNode(node){
+      const li=document.createElement("li");
+      const row=document.createElement("div"); row.className="node-row";
+      const name=document.createElement("input"); name.className="node-label"; name.value=node.label;
+      name.oninput=()=>{ node.label=name.value; persistTree(); };
+      const kind=document.createElement("select");
+      ["group","category","status","field"].forEach(k=>{
+        const o=document.createElement("option"); o.value=k; o.textContent=k;
+        if(node.kind===k) o.selected=true; kind.appendChild(o);
+      });
+      kind.onchange=()=>{ node.kind=kind.value; persistTree(); renderTreeUI(); };
+      const btnAdd=document.createElement("button"); btnAdd.className="btn"; btnAdd.textContent="+ Подузел";
+      btnAdd.onclick=()=>{ node.children=node.children||[]; node.children.push({id:uid(),kind:"category",label:"Новый",children:[]}); renderTreeUI(); };
+      const btnDel=document.createElement("button"); btnDel.className="btn btn-danger"; btnDel.textContent="Удалить";
+      btnDel.onclick=()=>{ if(confirm("Удалить?")){ removeNodeById(cmsTree,node.id); renderTreeUI(); } };
+      row.append(name,kind,btnAdd,btnDel); li.appendChild(row);
+      if(node.children){ const ul=document.createElement("ul"); node.children.forEach(ch=> ul.appendChild(renderNode(ch))); li.appendChild(ul); }
+      return li;
+    }
+
+    // ===== Фото =====
+    let photoFiles=[];
+    $("addPhotos").addEventListener("change", ()=>{
+      const files=[...$("addPhotos").files];
+      files.forEach(f=>{
+        photoFiles.push(f);
+        const fr=new FileReader();
+        fr.onload=e=>{
+          const d=document.createElement("div"); d.className="thumb";
+          d.innerHTML=`<img src="${e.target.result}"><button class="del">×</button>`;
+          $("photoPreview").appendChild(d);
+        };
+        fr.readAsDataURL(f);
+      });
+      $("addPhotos").value="";
+    });
+    $("photoPreview").addEventListener("click",(e)=>{
+      const btn=e.target.closest(".del"); if(!btn) return;
+      const idx=[...$("photoPreview").children].indexOf(btn.parentElement);
+      if(idx>-1) photoFiles.splice(idx,1);
+      btn.parentElement.remove();
+    });
+  </script>
+  <script>
+    let editId=null;
+
+    function saveObject(){
+      const gid=$("addGroup").value, cid=$("addCategory").value, sid=$("addStatus").value;
+      if(!gid||!cid||!sid){ alert("Выберите группу, категорию и статус"); return; }
+
+      const obj={
+        id: editId || uid(),
+        groupId:gid, categoryId:cid, statusId:sid,
+        lat:$("addLat").value||null, lng:$("addLng").value||null,
+        photos:[]
+      };
+
+      [...$("photoPreview").children].forEach(ch=>{
+        const img=ch.querySelector("img"); if(img) obj.photos.push(img.src);
+      });
+
+      if(editId){ // редактирование
+        objects = objects.map(o=> o.id===editId ? obj : o);
+        editId=null;
+      } else {
+        objects.push(obj);
+      }
+
+      persistObjects();
+      renderResults(objects);
+      resetForm();
+    }
+
+    function renderResults(list){
+      const res=$("results"); res.innerHTML="";
+      list.forEach(o=>{
+        const photosHtml = o.photos?.length
+          ? `<div class="gallery">${o.photos.map(p=>`<img src="${p}">`).join("")}</div>` : "";
+        res.insertAdjacentHTML("beforeend",`
+          <div class="item" data-id="${o.id}">
+            <div class="hdr-inline">
+              <input value="${o.groupId}" disabled>
+              <input value="${o.categoryId}" disabled>
+              <input value="${o.statusId}" disabled>
+              <button class="btn" onclick="editObject('${o.id}')">✏ Редактировать</button>
+              <button class="btn btn-danger" onclick="deleteObject('${o.id}')">Удалить</button>
+              <button class="btn" onclick="copyObject('${o.id}')">📄 Копировать</button>
+            </div>
+            ${photosHtml}
+          </div>
+        `);
+      });
+    }
+
+    function editObject(id){
+      const obj=objects.find(o=>o.id===id); if(!obj) return;
+      $("addGroup").value=obj.groupId;
+      $("addCategory").value=obj.categoryId;
+      $("addStatus").value=obj.statusId;
+      $("addLat").value=obj.lat||""; $("addLng").value=obj.lng||"";
+      $("photoPreview").innerHTML=""; photoFiles=[];
+      obj.photos.forEach(p=>{
+        const d=document.createElement("div"); d.className="thumb";
+        d.innerHTML=`<img src="${p}"><button class="del">×</button>`;
+        $("photoPreview").appendChild(d);
+      });
+      editId=obj.id;
+    }
+
+    function deleteObject(id){
+      if(!confirm("Удалить?")) return;
+      objects=objects.filter(o=>o.id!==id); persistObjects(); renderResults(objects);
+    }
+
+    function copyObject(id){
+      const obj=objects.find(o=>o.id===id); if(!obj) return;
+      const copy={...obj, id:uid()}; objects.push(copy); persistObjects(); renderResults(objects);
+    }
+
+    function resetForm(){
+      $("addLat").value=""; $("addLng").value="";
+      $("photoPreview").innerHTML=""; photoFiles=[]; editId=null;
+    }
+
+    function applyFilters(){ renderResults(objects); }
+    function resetFilters(){ renderResults(objects); }
+
+    function addRoot(){ cmsTree.push({id:uid(),kind:"group",label:"Новая группа",children:[]}); renderTreeUI(); }
+    function rebuildRoleSelects(){
+      $("filterGroup").innerHTML="<option value=''>—</option>";
+      $("addGroup").innerHTML="<option value=''>—</option>";
+      walk(cmsTree,(n)=>{ if(n.kind==="group"){
+        $("filterGroup").insertAdjacentHTML("beforeend",`<option value="${n.id}">${n.label}</option>`);
+        $("addGroup").insertAdjacentHTML("beforeend",`<option value="${n.id}">${n.label}</option>`);
+      }});
+    }
+
+    renderTreeUI(); renderResults(objects);
+  </script>
+</body>
+</html>
