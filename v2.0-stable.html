@@ -57,104 +57,86 @@
     .hidden{display:none!important}
   </style>
 </head>
-<body>
-  <header>🏠 Realty v2.0-stable</header>
-  <main>
-    <div class="authbar card">
-      <div><b>Админ-доступ</b> <span id="authStatus" class="note">Вы не вошли</span></div>
+  <body>
+    <div id="authBar">
+      <span id="authStatus"></span>
       <div id="authControls">
-        <input id="authUser" placeholder="логин" style="width:140px">
-        <input id="authPass" type="password" placeholder="пароль" style="width:140px">
-        <button class="btn btn-primary" onclick="doLogin()">Войти</button>
+        <input id="authUser" placeholder="логин">
+        <input id="authPass" type="password" placeholder="пароль">
+        <button class="btn" onclick="doLogin()">Войти</button>
       </div>
-      <div id="authLogout" class="hidden">
-        <button class="btn" onclick="doLogout()">Выйти</button>
-      </div>
+      <button id="authLogout" class="btn btn-danger hidden" onclick="doLogout()">Выйти</button>
     </div>
 
-    <div class="card">
+    <div id="filters">
       <h3>Фильтр</h3>
-      <div id="filterTree" class="row"></div>
+      <div id="filterTree"></div>
       <div class="row">
-        <div class="col"><label>Цена, $</label><div class="row"><input type="number" id="fPriceMin" placeholder="от"><input type="number" id="fPriceMax" placeholder="до"></div></div>
-        <div class="col"><label>Комнаты</label><div class="row"><input type="number" id="fRoomsMin" placeholder="от"><input type="number" id="fRoomsMax" placeholder="до"></div></div>
-        <div class="col"><label>Площадь, м²</label><div class="row"><input type="number" id="fAreaMin" placeholder="от"><input type="number" id="fAreaMax" placeholder="до"></div></div>
-      </div>
-      <div class="row">
-        <div class="col"><label>Этаж</label><div class="row"><input type="number" id="fFloorMin" placeholder="от"><input type="number" id="fFloorMax" placeholder="до"></div></div>
-        <div class="col"><label>Этажность дома</label><div class="row"><input type="number" id="fFloorsMin" placeholder="от"><input type="number" id="fFloorsMax" placeholder="до"></div></div>
-        <div class="col"><label>По карте: радиус (м)</label><input type="number" id="fRadius" placeholder="например 1000"></div>
-        <div class="col"><label>&nbsp;</label><label class="pill"><input type="checkbox" id="onlyAfterApply" checked> Метки только после «Применить»</label></div>
+        <div class="col"><label>Цена от</label><input id="fPriceMin" type="number"></div>
+        <div class="col"><label>Цена до</label><input id="fPriceMax" type="number"></div>
+        <div class="col"><label>Комнаты от</label><input id="fRoomsMin" type="number"></div>
+        <div class="col"><label>Комнаты до</label><input id="fRoomsMax" type="number"></div>
       </div>
       <div class="row">
-        <button class="btn btn-primary" onclick="applyFilters()">Применить</button>
-        <button class="btn" onclick="resetFilters()">Сбросить</button>
+        <div class="col"><label>Площадь от</label><input id="fAreaMin" type="number"></div>
+        <div class="col"><label>Площадь до</label><input id="fAreaMax" type="number"></div>
+        <div class="col"><label>Этаж от</label><input id="fFloorMin" type="number"></div>
+        <div class="col"><label>Этаж до</label><input id="fFloorMax" type="number"></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Этажность от</label><input id="fFloorsMin" type="number"></div>
+        <div class="col"><label>Этажность до</label><input id="fFloorsMax" type="number"></div>
+        <div class="col"><label>Радиус (м)</label><input id="fRadius" type="number"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" onclick="applyFilters()">Применить</button>
+        <button class="btn btn-danger" onclick="resetFilters()">Сбросить</button>
       </div>
     </div>
 
-    <div id="mapMain" class="card"></div>
+    <div id="mapMain"></div>
+    <div id="results"></div>
 
-    <div class="card">
-      <h3>Результаты</h3>
-      <div id="results" class="list"></div>
-    </div>
+    <div id="adminWrap" class="hidden">
+      <h3>Добавить / редактировать объект</h3>
+      <div class="row">
+        <div class="col"><label>Заголовок*</label><input id="aTitle"></div>
+        <div class="col"><label>Цена*</label><input id="aPrice" type="number"></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Комнаты</label><input id="aRooms" type="number"></div>
+        <div class="col"><label>Площадь (м²)</label><input id="aArea" type="number"></div>
+        <div class="col"><label>Этаж</label><input id="aFloor" type="number"></div>
+        <div class="col"><label>Этажность</label><input id="aFloors" type="number"></div>
+      </div>
+      <div id="aPrimaryCascade"></div>
+      <div id="aNodeChecks"></div>
 
-    <div id="adminWrap" class="card hidden">
-      <h3>Админка</h3>
+      <h4>Локация</h4>
+      <div class="row">
+        <div class="col"><label>Широта</label><input id="aLat" type="number"></div>
+        <div class="col"><label>Долгота</label><input id="aLng" type="number"></div>
+      </div>
+      <div id="adminMap" style="height:200px;margin:10px 0"></div>
 
-      <div class="card">
-        <h4>Дерево категорий</h4>
-        <div class="row">
-          <button class="btn" onclick="addRootNode()">+ Корневой узел</button>
-          <span class="note">Любая глубина: Квартира → Аренда → Посуточно → ...</span>
-        </div>
-        <div id="treeAdmin" class="tree"></div>
+      <h4>Фотографии</h4>
+      <input id="aPhotos" type="file" accept="image/*" multiple>
+      <div id="aGallery"></div>
+
+      <h4>Контакты</h4>
+      <div class="row">
+        <div class="col"><label>Telegram</label><input id="aTg" placeholder="@ник"></div>
+        <div class="col"><label>Телефон</label><input id="aTel" placeholder="+998..."></div>
+        <div class="col"><label>Email</label><input id="aEmail" placeholder="example@mail.com"></div>
       </div>
 
-      <div class="card">
-        <h4>Добавить / редактировать объект</h4>
-        <div class="row">
-          <div class="col"><label>Заголовок *</label><input id="aTitle"></div>
-          <div class="col"><label>Цена, $ *</label><input id="aPrice" type="number"></div>
-          <div class="col"><label>Комнаты</label><input id="aRooms" type="number"></div>
-          <div class="col"><label>Площадь, м²</label><input id="aArea" type="number"></div>
-        </div>
-
-        <div class="row">
-          <div class="col"><label>Этаж</label><input id="aFloor" type="number"></div>
-          <div class="col"><label>Этажность дома</label><input id="aFloors" type="number"></div>
-        </div>
-
-        <div class="row">
-          <div class="col" style="flex:1">
-            <label>Категория</label>
-            <div id="aPrimaryCascade" class="row" style="gap:6px"></div>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col" style="flex:1">
-            <label>Фото</label>
-            <input type="file" id="aPhotos" multiple accept="image/*" />
-            <div id="aGallery" class="thumbs"></div>
-          </div>
-        </div>
-
-        <div class="row">
-          <button class="btn btn-primary" onclick="saveObject()">💾 Сохранить</button>
-          <button class="btn" onclick="resetForm()">🧹 Очистить</button>
-        </div>
-        <div class="note">Поля с * обязательны</div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" onclick="saveObject()">Сохранить</button>
+        <button class="btn" onclick="resetForm()">Очистить</button>
       </div>
     </div>
-  </main>
 
-  <div id="modal" class="modal">
-    <div class="modal-content">
-      <span class="close" onclick="closeModal()">&times;</span>
-      <div id="modalBody"></div>
-    </div>
-  </div>
+    <div id="modal"><div id="modalBody"></div></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // helpers & storage
@@ -433,6 +415,12 @@
         <div class="row" style="gap:12px">
           ${chip("Комнаты", o.rooms)} ${chip("Площадь", o.area)} ${chip("Этаж", o.floor)} ${chip("Этажность", o.floors)}
         </div>
+        <h4>Контакты</h4>
+        <div class="note">
+          ${o.tel?`📱 ${o.tel}<br>`:""}
+          ${o.email?`✉ ${o.email}<br>`:""}
+          ${o.tg?`🔵 <a href="https://t.me/${o.tg.replace('@','')}?text=Здравствуйте, меня интересует ваше объявление «${o.title}»" target="_blank">Написать в Telegram</a>`:""}
+        </div>
         ${o.lat!=null&&o.lng!=null?`<div class="note" style="margin-top:10px">Координаты: ${o.lat}, ${o.lng}</div>`:""}
       `;
       $("modal").style.display="flex"; slideIndex=0; updateSlide();
@@ -454,7 +442,14 @@
     function saveObject(){
       const title=$("aTitle").value.trim();
       const price=+$("aPrice").value;
-      if(!title||!price){ alert("Заполни заголовок и цену"); return; }
+      const required=["aTitle","aPrice"];
+      let valid=true;
+      required.forEach(id=>{
+        const el=$(id);
+        if(!el.value){ el.style.borderColor="red"; valid=false; }
+        else el.style.borderColor="#e5e7eb";
+      });
+      if(!valid){ alert("Заполни обязательные поля (заголовок и цену)"); return; }
 
       const nodeId=getCascadeSelected($("aPrimaryCascade"));
       const obj={
@@ -467,7 +462,10 @@
         lat:   $("aLat").value? +$("aLat").value : null,
         lng:   $("aLng").value? +$("aLng").value : null,
         nodeId: nodeId || "",
-        photos: [...photoFiles]
+        photos: [...photoFiles],
+        tg: $("aTg")?.value.trim() || "",
+        tel:$("aTel")?.value.trim() || "",
+        email:$("aEmail")?.value.trim() || ""
       };
 
       if(editId){
@@ -492,6 +490,7 @@
       $("aFloor").value=o.floor??"";
       $("aFloors").value=o.floors??"";
       $("aLat").value=o.lat??""; $("aLng").value=o.lng??"";
+      $("aTg").value=o.tg||""; $("aTel").value=o.tel||""; $("aEmail").value=o.email||"";
       setCascadeByNodeId($("aPrimaryCascade"), o.nodeId||"");
       photoFiles=(o.photos||[]).slice();
       $("aGallery").innerHTML=photoFiles.map(src=>`<div class="thumb"><img src="${src}"><button class="del">×</button></div>`).join("");
@@ -507,7 +506,7 @@
 
     function resetForm(){
       editId=null;
-      ["aTitle","aPrice","aRooms","aArea","aFloor","aFloors","aLat","aLng"].forEach(id=>$(id).value="");
+      ["aTitle","aPrice","aRooms","aArea","aFloor","aFloors","aLat","aLng","aTg","aTel","aEmail"].forEach(id=>{ if($(id)) $(id).value=""; });
       $("aPrimaryCascade").innerHTML=""; renderAdminPrimaryCascade();
       photoFiles=[]; $("aGallery").innerHTML="";
       if(window.adminMarker){ adminMap.removeLayer(adminMarker); adminMarker=null; }
@@ -609,22 +608,7 @@
 
     // init
     (function init(){
-      if(!Array.isArray(tree)||tree.length===0){
-        tree=[{id:uid(),label:"Недвижимость",icon:"🏠",children:[
-          {id:uid(),label:"Квартира",icon:"🏢",children:[
-            {id:uid(),label:"Аренда",children:[{id:uid(),label:"Посуточно"},{id:uid(),label:"Долгосрочно"}]},
-            {id:uid(),label:"Продажа"}
-          ]},
-          {id:uid(),label:"Дом",icon:"🏡",children:[{id:uid(),label:"Аренда"},{id:uid(),label:"Продажа"}]},
-          {id:uid(),label:"Коммерция",icon:"🏬",children:[{id:uid(),label:"Аренда"},{id:uid(),label:"Продажа"}]}
-        ]}];
-        persistTree();
-      }
-      renderTreeAdmin();
-      renderFilterTree();
-      renderAdminPrimaryCascade();
       renderResults(false);
-      applyAuthUI();
     })();
   </script>
 </body>
