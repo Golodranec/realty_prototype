@@ -1,4 +1,4 @@
-alert("✅ script.js v7 загружен");
+alert("✅ script.js v9 загружен");
 
 let objects = [];
 let map;
@@ -48,9 +48,10 @@ function renderMarkers(list) {
     if (obj.photos && obj.photos.length > 0) {
       popupContent += `
         <div class="photo-slider" data-index="0" id="popup-slider-${index}">
-          <img src="${obj.photos[0]}" class="popup-photo slider-img">
+          <img src="${obj.photos[0]}" class="popup-photo slider-img" onclick="scrollToCard(${index})">
           <button class="slider-btn prev" onclick="changePopupSlide(${index}, -1)">◀</button>
           <button class="slider-btn next" onclick="changePopupSlide(${index}, 1)">▶</button>
+          <div class="slider-counter" id="popup-counter-${index}">1 / ${obj.photos.length}</div>
         </div>
       `;
     }
@@ -72,6 +73,7 @@ function changePopupSlide(idx, direction) {
   index = (index + direction + photos.length) % photos.length;
   slider.dataset.index = index;
   slider.querySelector(".slider-img").src = photos[index];
+  document.getElementById(`popup-counter-${idx}`).innerText = `${index + 1} / ${photos.length}`;
 }
 
 function renderResults(list) {
@@ -101,15 +103,20 @@ function renderResults(list) {
       let prevBtn = document.createElement("button");
       prevBtn.innerText = "◀";
       prevBtn.className = "slider-btn prev";
-      prevBtn.onclick = () => changeSlide(slider, obj.photos, -1);
+      prevBtn.onclick = () => changeSlide(slider, obj.photos, -1, counter);
 
       let nextBtn = document.createElement("button");
       nextBtn.innerText = "▶";
       nextBtn.className = "slider-btn next";
-      nextBtn.onclick = () => changeSlide(slider, obj.photos, 1);
+      nextBtn.onclick = () => changeSlide(slider, obj.photos, 1, counter);
+
+      let counter = document.createElement("div");
+      counter.className = "slider-counter";
+      counter.innerText = `1 / ${obj.photos.length}`;
 
       slider.appendChild(prevBtn);
       slider.appendChild(nextBtn);
+      slider.appendChild(counter);
 
       card.appendChild(slider);
     }
@@ -118,15 +125,34 @@ function renderResults(list) {
       card.innerHTML += `<p><a href="${obj.contact}" target="_blank">Связаться</a></p>`;
     }
 
+    // кнопка удаления
+    let delBtn = document.createElement("button");
+    delBtn.className = "delete-btn";
+    delBtn.innerText = "Удалить";
+    delBtn.onclick = () => deleteObject(idx);
+    card.appendChild(delBtn);
+
     resultsDiv.appendChild(card);
   });
 }
 
-function changeSlide(slider, photos, direction) {
+function changeSlide(slider, photos, direction, counterEl) {
   let index = parseInt(slider.dataset.index);
   index = (index + direction + photos.length) % photos.length;
   slider.dataset.index = index;
   slider.querySelector(".slider-img").src = photos[index];
+  counterEl.innerText = `${index + 1} / ${photos.length}`;
+}
+
+function scrollToCard(index) {
+  const cards = document.querySelectorAll(".result-card");
+  if (cards[index]) {
+    cards[index].scrollIntoView({ behavior: "smooth", block: "center" });
+    cards[index].style.boxShadow = "0 0 10px 3px #4CAF50";
+    setTimeout(() => {
+      cards[index].style.boxShadow = "none";
+    }, 2000);
+  }
 }
 
 function addObject() {
@@ -163,6 +189,14 @@ function addObject() {
     if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
     alert("📌 Объект добавлен!");
   });
+}
+
+function deleteObject(index) {
+  if (!confirm("Удалить этот объект?")) return;
+  objects.splice(index, 1);
+  saveObjects();
+  renderResults(objects);
+  renderMarkers(objects);
 }
 
 function previewPhotos(event) {
