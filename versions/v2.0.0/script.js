@@ -1,3 +1,30 @@
+// === ИНИЦИАЛИЗАЦИЯ КАРТЫ ===
+const map = L.map('map').setView([41.3111, 69.2797], 12); // Центр Ташкента
+
+// Подгрузка тайлов OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+// Контейнер для маркеров
+let markersLayer = L.layerGroup().addTo(map);
+
+// Функция отрисовки объектов на карте
+function renderMarkers(objects) {
+  markersLayer.clearLayers(); // чистим старые маркеры
+
+  objects.forEach(obj => {
+    if (obj.lat && obj.lng) {
+      const marker = L.marker([obj.lat, obj.lng]).addTo(markersLayer);
+      marker.bindPopup(`
+        <b>${obj.title}</b><br>
+        ${obj.price ? obj.price + " $": ""}
+        ${obj.rooms ? "<br>Комнат: " + obj.rooms : ""}
+        ${obj.area ? "<br>Площадь: " + obj.area + " м²" : ""}
+      `);
+    }
+  });
+}
 // Храним объекты в памяти
 let objects = [];
 
