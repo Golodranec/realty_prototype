@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Каталог недвижимости — v1.5.8</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+
+  <style>
+    body{font-family:sans-serif;margin:0;padding:0;background:#f6f7fb;color:#0f172a}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .card{background:#fff;padding:14px;border:1px solid #e5e7eb;border-radius:12px;margin:10px 0}
+    h1{margin:0 0 10px}
+    .row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+    input,select,button{padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}
+    button{cursor:pointer}
+    .btn-primary{background:#2563eb;color:#fff}
+    #mapMain{height:400px;margin-top:10px;border-radius:12px}
+    .list{display:grid;gap:10px}
+    .item{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px}
+    .gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .gallery img{width:90px;height:70px;object-fit:cover;border-radius:6px}
+    .chip{display:inline-block;background:#eef2ff;border:1px solid #e0e7ff;
+      color:#3730a3;border-radius:999px;padding:2px 8px;font-size:12px;margin:2px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Каталог недвижимости v1.5.8</h1>
+    <p class="sub">Фильтры, карта, фото и умные параметры</p>
+
+    <!-- Фильтры -->
+    <div class="card">
+      <h3>Фильтр</h3>
+      <div class="row">
+        <div>
+          <label>Категория</label>
+          <select id="filterCategory"><option value="">Любая</option></select>
+        </div>
+        <div>
+          <label>Статус</label>
+          <select id="filterStatus"><option value="">Любой</option></select>
+        </div>
+        <div>
+          <label>Район</label>
+          <select id="filterDistrict"><option value="">Любой</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Цена (от)</label>
+          <input type="number" id="filterPriceMin"/>
+        </div>
+        <div>
+          <label>Цена (до)</label>
+          <input type="number" id="filterPriceMax"/>
+        </div>
+        <div>
+          <label>Комнат (от)</label>
+          <input type="number" id="filterRoomsMin"/>
+        </div>
+        <div>
+          <label>Комнат (до)</label>
+          <input type="number" id="filterRoomsMax"/>
+        </div>
+      </div>
+      <div class="row">
+        <div><label><input type="checkbox" id="filterBasement"> Подвал</label></div>
+        <div><label><input type="checkbox" id="filterGround"> Цокольный</label></div>
+        <div>
+          <label>Этаж (от)</label><input type="number" id="filterFloorMin"/>
+        </div>
+        <div>
+          <label>Этаж (до)</label><input type="number" id="filterFloorMax"/>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn-primary" onclick="applyFilters()">Применить</button>
+        <button onclick="resetFilters()">Сбросить</button>
+      </div>
+    </div>
+
+    <!-- Карта -->
+    <div id="mapMain"></div>
+
+    <!-- Список объектов -->
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <!-- Админка -->
+    <div class="card">
+      <h3>Админка (добавить объект)</h3>
+      <div class="row">
+        <div><label>Категория</label><select id="addCategory"></select></div>
+        <div><label>Статус</label><select id="addStatus"></select></div>
+        <div><label>Район</label><select id="addDistrict"></select></div>
+      </div>
+      <div class="row">
+        <div><label>Заголовок</label><input id="addTitle"/></div>
+        <div><label>Цена</label><input type="number" id="addPrice"/></div>
+        <div><label>Комнаты</label><input type="number" id="addRooms"/></div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Этаж</label>
+          <select id="addFloor">
+            <option value="">---</option>
+            <option>Подвал</option>
+            <option>Цокольный</option>
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+            <option>6</option>
+            <option>7</option>
+            <option>8</option>
+            <option>9</option>
+            <option>10</option>
+          </select>
+        </div>
+        <div><label>Площадь (м²)</label><input type="number" id="addArea"/></div>
+      </div>
+      <div class="row">
+        <div><label>Фото</label><input type="file" id="addPhotos" multiple/></div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Координаты</label>
+          <input id="addLat" placeholder="lat"/>
+          <input id="addLng" placeholder="lng"/>
+        </div>
+      </div>
+      <div class="row"><button class="btn-primary" onclick="addObject()">Добавить объект</button></div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script>
+    // --- Данные ---
+    let objects = JSON.parse(localStorage.getItem("objects")||"[]");
+    let categories = ["Квартира","Дом","Земля","Коммерция"];
+    let statuses = ["Аренда","Продажа"];
+    let districts = ["Юнусабад","Чиланзар","Сергели"];
+
+    // --- Карта ---
+    const map = L.map("mapMain").setView([41.3111, 69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:"© OpenStreetMap"
+    }).addTo(map);
+    let markersLayer = L.layerGroup().addTo(map);
+
+    function renderMarkers(list){
+      markersLayer.clearLayers();
+      list.forEach(obj=>{
+        if(obj.lat && obj.lng){
+          const marker = L.marker([obj.lat,obj.lng]).addTo(markersLayer);
+          marker.bindPopup(`
+            <b>${obj.title}</b><br>
+            ${obj.price||""} $<br>
+            ${obj.rooms||""} комн<br>
+            Этаж: ${obj.floor||""}<br>
+            <img src="${obj.photos?.[0]||""}" style="width:100px;height:80px;object-fit:cover">
+          `);
+        }
+      });
+    }
+
+    // --- Рендер фильтров и списков ---
+    function renderFilters(){
+      categories.forEach(c=>document.getElementById("filterCategory").insertAdjacentHTML("beforeend",`<option>${c}</option>`));
+      statuses.forEach(s=>document.getElementById("filterStatus").insertAdjacentHTML("beforeend",`<option>${s}</option>`));
+      districts.forEach(d=>document.getElementById("filterDistrict").insertAdjacentHTML("beforeend",`<option>${d}</option>`));
+      categories.forEach(c=>document.getElementById("addCategory").insertAdjacentHTML("beforeend",`<option>${c}</option>`));
+      statuses.forEach(s=>document.getElementById("addStatus").insertAdjacentHTML("beforeend",`<option>${s}</option>`));
+      districts.forEach(d=>document.getElementById("addDistrict").insertAdjacentHTML("beforeend",`<option>${d}</option>`));
+    }
+
+    function renderResults(list){
+      const res=document.getElementById("results");
+      res.innerHTML="";
+      list.forEach(o=>{
+        const photosHtml=o.photos?.map(p=>`<img src="${p}">`).join("")||"";
+        res.insertAdjacentHTML("beforeend",`
+          <div class="item">
+            <div><b>${o.title}</b> (${o.category}, ${o.status}, ${o.district})</div>
+            <div>${o.price||""} $ • ${o.rooms||""} комн • ${o.area||""} м² • Этаж: ${o.floor||""}</div>
+            <div class="gallery">${photosHtml}</div>
+          </div>
+        `);
+      });
+      renderMarkers(list);
+    }
+
+    // --- Фильтрация ---
+    function applyFilters(){
+      let fcat=document.getElementById("filterCategory").value;
+      let fstat=document.getElementById("filterStatus").value;
+      let fdist=document.getElementById("filterDistrict").value;
+      let pmin=+document.getElementById("filterPriceMin").value||0;
+      let pmax=+document.getElementById("filterPriceMax").value||Infinity;
+      let rmin=+document.getElementById("filterRoomsMin").value||0;
+      let rmax=+document.getElementById("filterRoomsMax").value||Infinity;
+      let fBasement=document.getElementById("filterBasement").checked;
+      let fGround=document.getElementById("filterGround").checked;
+      let fFloorMin=+document.getElementById("filterFloorMin").value||0;
+      let fFloorMax=+document.getElementById("filterFloorMax").value||Infinity;
+
+      const filtered=objects.filter(o=>
+        (!fcat||o.category===fcat)&&
+        (!fstat||o.status===fstat)&&
+        (!fdist||o.district===fdist)&&
+        (!o.price||(o.price>=pmin&&o.price<=pmax))&&
+        (!o.rooms||(o.rooms>=rmin&&o.rooms<=rmax))&&
+        (!fBasement||o.floor==="Подвал")&&
+        (!fGround||o.floor==="Цокольный")&&
+        (!o.floor||(parseInt(o.floor)||0)>=fFloorMin)&&
+        (!o.floor||(parseInt(o.floor)||0)<=fFloorMax)
+      );
+      renderResults(filtered);
+    }
+
+    function resetFilters(){
+      document.querySelectorAll("#filterCategory,#filterStatus,#filterDistrict,#filterPriceMin,#filterPriceMax,#filterRoomsMin,#filterRoomsMax,#filterFloorMin,#filterFloorMax").forEach(el=>el.value="");
+      document.getElementById("filterBasement").checked=false;
+      document.getElementById("filterGround").checked=false;
+      renderResults(objects);
+    }
+
+    // --- Добавление объекта ---
+    function addObject(){
+      let title=document.getElementById("addTitle").value.trim();
+      let category=document.getElementById("addCategory").value;
+      let status=document.getElementById("addStatus").value;
+      let district=document.getElementById("addDistrict").value;
+      if(!title||!category||!status||!district){
+        alert("Заполни обязательные поля: Заголовок, Категория, Статус, Район");
+        return;
+      }
+      let price=+document.getElementById("addPrice").value||null;
+      let rooms=+document.getElementById("addRooms").value||null;
+      let area=+document.getElementById("addArea").value||null;
+      let floor=document.getElementById("addFloor").value;
+      let lat=parseFloat(document.getElementById("addLat").value)||null;
+      let lng=parseFloat(document.getElementById("addLng").value)||null;
+
+      let files=document.getElementById("addPhotos").files;
+      let photos=[];
+      if(files.length){
+        let done=0;
+        for(let f of files){
+          let r=new FileReader();
+          r.onload=e=>{
+            photos.push(e.target.result);done++;
+            if(done===files.length) saveObj();
+          };
+          r.readAsDataURL(f);
+        }
+      } else saveObj();
+
+      function saveObj(){
+        let obj={title,category,status,district,price,rooms,area,floor,lat,lng,photos};
+        objects.push(obj);
+        localStorage.setItem("objects",JSON.stringify(objects));
+        renderResults(objects);
+      }
+    }
+
+    // --- Init ---
+    renderFilters();
+    renderResults(objects);
+  </script>
+</body>
+</html>
