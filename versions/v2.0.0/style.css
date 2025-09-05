@@ -1,3 +1,63 @@
-body { font-family: sans-serif; margin: 0; }
-header { padding: 10px; background: #4caf50; color: white; }
-#mapMain { margin: 10px; border: 1px solid #ccc; }
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #f9f9f9;
+}
+
+header {
+  background: #4caf50;
+  color: white;
+  padding: 10px;
+  font-size: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+.filter, .admin, .results {
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+label {
+  display: block;
+  margin-top: 8px;
+}
+
+input, select, button {
+  padding: 8px;
+  margin-top: 5px;
+  width: 100%;
+  max-width: 300px;
+}
+
+button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #45a049;
+}
+
+#map {
+  height: 400px;
+  margin-top: 10px;
+  border-radius: 8px;
+}
+
+.result-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
