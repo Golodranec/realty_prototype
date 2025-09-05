@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Каталог недвижимости — v1.8.1 (treeflex)</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b;
+      --border:#e5e7eb; --accent:#2563eb; --danger:#dc2626;
+      --chip:#eef2ff; --chip-b:#e0e7ff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    h1{font-size:26px;margin:8px 0 6px}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .sub{margin:0 0 14px;color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--border);
+      border-radius:14px;padding:14px;margin:10px 0;
+      box-shadow:0 4px 18px rgba(0,0,0,.04)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .col{display:flex;flex-direction:column;gap:6px;min-width:220px}
+    label{font-size:12px;color:var(--muted)}
+    input,select,textarea,button{font-size:14px;padding:10px;
+      border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text)}
+    input[type="number"]{width:140px}
+    textarea{resize:vertical;min-height:80px}
+    .btn{cursor:pointer;user-select:none}
+    .btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
+    .btn-ghost{background:#fff}
+    .btn-danger{background:#fff;color:var(--danger);border-color:#fecaca}
+    .hr{height:1px;background:var(--border);border:0;margin:12px 0}
+    .section-title{font-weight:700;margin:6px 0 8px}
+    .note{font-size:12px;color:var(--muted);margin-top:4px}
+
+    /* Map */
+    #mapMain{width:100%;height:420px;border-radius:12px;border:1px solid var(--border);margin-top:8px}
+    #adminObjMap{height:200px;border:1px solid var(--border);border-radius:8px;margin-top:6px}
+    #geoMap{height:260px;border:1px solid var(--border);border-radius:8px;margin-top:6px}
+
+    /* Results */
+    .list{display:grid;gap:10px}
+    .item{background:#fff;border:1px solid var(--border);
+      border-radius:12px;padding:12px}
+    .hdr{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .price{font-weight:800}
+    .gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .gallery .thumb{position:relative}
+    .gallery img{width:100px;height:78px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+    .gallery .del{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px}
+
+    .inline{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{background:var(--chip);border:1px solid var(--chip-b);color:#3730a3;
+      border-radius:999px;padding:2px 8px;font-size:12px}
+
+    /* Login modal */
+    #loginModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:1000}
+    #loginModal .card{max-width:360px;width:100%}
+
+    /* Tree */
+    .tree{padding:0;margin:0;list-style:none}
+    .tree li{padding:8px;border:1px solid var(--border);border-radius:10px;margin:6px 0;background:#fff}
+    .node-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .node-label{font-weight:600;min-width:160px}
+    .children{margin-left:16px}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:#fff}
+
+    .fieldbox{display:grid;grid-template-columns:160px 190px 140px 160px 160px 1fr auto;gap:8px;align-items:center;margin-top:8px}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .tags-wrap{display:flex;gap:8px;flex-wrap:wrap;max-height:140px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:#fff}
+    .tag-check{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:999px;padding:6px 10px}
+  </style>
+</head>
+<body>
+  <!-- Login -->
+  <div id="loginModal">
+    <div class="card">
+      <h3>Вход в админку</h3>
+      <div class="col"><label>Логин</label><input id="loginUser"></div>
+      <div class="col"><label>Пароль</label><input type="password" id="loginPass"></div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="login()">Войти</button>
+        <button class="btn" onclick="hideLogin()">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h1>Каталог недвижимости v1.8.1</h1>
+    <p class="sub">Бесконечные ветви дерева. Поля внутри дерева. Мультизагрузка фото. Гео-привязка узлов.</p>
+
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <span class="chip">treeflex</span>
+        <span class="chip">универсальные поля</span>
+        <span class="chip">гео</span>
+        <button class="btn btn-primary" style="margin-left:auto" onclick="showLogin()">Войти в админку</button>
+      </div>
+    </div>
+
+    <!-- ФИЛЬТРЫ -->
+    <div class="card" id="filtersCard">
+      <h3>Фильтр</h3>
+      <div class="col" style="flex:1">
+        <label>Теги (из дерева): выбери нужные категории/подкатегории</label>
+        <div id="filterTags" class="tags-wrap"></div>
+      </div>
+      <div id="dynamicFilters" class="row" style="margin-top:10px"></div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="applyFilters()">Применить</button>
+        <button class="btn" onclick="resetFilters()">Сбросить</button>
+      </div>
+      <p class="note">Фильтры строятся из узлов-полей. Теги — это любые узлы-папки.</p>
+    </div>
+
+    <!-- КАРТА (пока превью; кластеры и «синие кругляшки» добавим в 1.8.2) -->
+    <div id="mapMain"></div>
+
+    <!-- РЕЗУЛЬТАТЫ -->
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <!-- АДМИН: ОБЪЕКТЫ -->
+    <div class="card" id="adminObjects" style="display:none">
+      <h3>Админ: Объекты</h3>
+      <div class="col" style="flex:1">
+        <label>Классификация (теги из дерева)</label>
+        <div id="addTags" class="tags-wrap"></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Lat</label><input id="addLat" placeholder="41.3"></div>
+        <div class="col"><label>Lng</label><input id="addLng" placeholder="69.2"></div>
+      </div>
+      <div id="adminObjMap"></div>
+
+      <div id="dynamicFormFields" class="row" style="margin-top:10px"></div>
+
+      <div class="row" style="margin-top:10px">
+        <div class="col" style="flex:1">
+          <label>Фото</label>
+          <input type="file" id="addPhotos" multiple>
+          <div id="photoPreview" class="gallery"></div>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="saveObject()">Сохранить</button>
+        <button class="btn" onclick="resetForm()">Очистить</button>
+      </div>
+    </div>
+
+    <!-- АДМИН: ДЕРЕВО + ГЕО + ПОЛЯ -->
+    <div class="card" id="adminTree" style="display:none">
+      <h3>Админ: Дерево (папки/поля) + гео-привязка</h3>
+      <p class="note">Узел может быть «папкой» или «полем». Поле имеет тип: text, number (+диапазон), select, multiselect.</p>
+      <div class="row">
+        <button class="btn" onclick="addRoot()">+ Корневой узел</button>
+      </div>
+      <ul id="tree" class="tree"></ul>
+
+      <div class="row" style="margin-top:10px">
+        <div class="col"><label>Выбранный узел</label><input id="geoNodeName" placeholder="—" readonly></div>
+        <div class="col"><label>Радиус (м)</label><input id="geoRadius" type="number" value="1000"></div>
+      </div>
+      <div id="geoMap"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-primary" onclick="saveGeoForNode()">Сохранить гео</button>
+        <button class="btn" onclick="clearGeoForNode()">Сбросить гео</button>
+      </div>
+    </div>
+  </div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script>
+    // ===== НАСТРОЙКИ =====
+    const TELEGRAM_USER = "smeksy";
+    const adminUser="admin", adminPass="1234";
+    let logged=false, editId=null;
+
+    // ===== УТИЛЫ =====
+    const $=id=>document.getElementById(id);
+    const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+    // ===== ХРАНИЛКИ =====
+    let objects = JSON.parse(localStorage.getItem("objects_v181")||"[]");
+    function persistObjects(){ localStorage.setItem("objects_v181", JSON.stringify(objects)); }
+
+    // дерево (папки/поля) — БЕЗ ограничений по глубине
+    let cmsTree = JSON.parse(localStorage.getItem("cms_tree_v181")||"null");
+    if(!cmsTree){
+      cmsTree = [
+        {id:uid(), kind:"folder", label:"Категории", children:[
+          {id:uid(), kind:"folder", label:"Квартира", children:[
+            {id:uid(), kind:"folder", label:"Аренда", children:[
+              {id:uid(), kind:"field", label:"Тип аренды", field:{
+                key:"rent_type", type:"select", label:"Тип аренды", options:["Посуточная","Долгосрочная"],
+                required:false, inFilter:true
+              }}
+            ]},
+            {id:uid(), kind:"folder", label:"Продажа", children:[]}
+          ]},
+          {id:uid(), kind:"folder", label:"Коммерция", children:[
+            {id:uid(), kind:"folder", label:"Офис", children:[]},
+            {id:uid(), kind:"folder", label:"Общепит", children:[]},
+            {id:uid(), kind:"folder", label:"Склад", children:[]}
+          ]},
+          {id:uid(), kind:"folder", label:"Метро", children:[
+            {id:uid(), kind:"folder", label:"Станция А", geo:{lat:41.31,lng:69.28,radius:600}, children:[]},
+            {id:uid(), kind:"folder", label:"Станция Б", geo:{lat:41.33,lng:69.27,radius:600}, children:[]}
+          ]},
+          {id:uid(), kind:"field", label:"Состояние", field:{
+            key:"condition", type:"select", label:"Состояние",
+            options:["Без ремонта (черновая)","Косметический","Средний","Капитальный","Евроремонт","Дизайнерский"],
+            required:false, inFilter:true
+          }},
+          {id:uid(), kind:"field", label:"Цена ($)", field:{
+            key:"price", type:"number", label:"Цена ($)", required:false, inFilter:true, rangeInFilter:true
+          }},
+          {id:uid(), kind:"field", label:"Комнаты", field:{
+            key:"rooms", type:"number", label:"Комнаты", required:false, inFilter:true, rangeInFilter:true
+          }},
+          {id:uid(), kind:"field", label:"Площадь (м²)", field:{
+            key:"area", type:"number", label:"Площадь (м²)", required:false, inFilter:true, rangeInFilter:true
+          }},
+          {id:uid(), kind:"field", label:"Удобства", field:{
+            key:"amenities", type:"multiselect", label:"Удобства",
+            options:["Кондиционер","Холодильник","Мебель","Стиралка","Интернет","Лифт","Охрана"],
+            required:false, inFilter:true
+          }}
+        ]}
+      ];
+      persistTree();
+    }
+    function persistTree(){ localStorage.setItem("cms_tree_v181", JSON.stringify(cmsTree)); }
+
+    // обход дерева
+    function walk(nodes, fn, parentPath=[]){
+      if(!nodes) return;
+      for(const n of nodes){
+        fn(n, parentPath);
+        if(n.children?.length) walk(n.children, fn, [...parentPath, n]);
+      }
+    }
+
+    function flattenFolders(){
+      const list=[];
+      walk(cmsTree, (n, path)=>{
+        if(n.kind==="folder") list.push({
+          id:n.id, label:n.label,
+          path: path.map(p=>p.label).concat(n.label)
+        });
+      });
+      return list;
+    }
+    function collectFieldNodes(){
+      const fields=[];
+      walk(cmsTree, (n)=>{
+        if(n.kind==="field" && n.field){
+          fields.push(n.field);
+        }
+      });
+      return fields;
+    }
+    function findNodeById(id){
+      let found=null;
+      walk(cmsTree,(n)=>{ if(n.id===id) found=n; });
+      return found;
+    }
+    function removeNodeById(list,id){
+      for(let i=0;i<list.length;i++){
+        const n=list[i];
+        if(n.id===id){ list.splice(i,1); return true; }
+        if(n.children && removeNodeById(n.children,id)) return true;
+      }
+      return false;
+    }
+
+    // ===== КАРТЫ =====
+    const map = L.map("mapMain").setView([41.3111,69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+    let markersLayer = L.layerGroup().addTo(map);
+
+    const adminObjMap = L.map("adminObjMap").setView([41.3111,69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(adminObjMap);
+    let adminObjMarker=null;
+    adminObjMap.on("click",(e)=>{ setObjLatLng(e.latlng.lat,e.latlng.lng,true); });
+    function setObjLatLng(lat,lng,pan){
+      $("addLat").value=lat.toFixed(6);
+      $("addLng").value=lng.toFixed(6);
+      if(adminObjMarker) adminObjMarker.setLatLng([lat,lng]);
+      else adminObjMarker=L.marker([lat,lng]).addTo(adminObjMap);
+      if(pan) adminObjMap.setView([lat,lng], 13);
+    }
+
+    // карта гео-узла
+    const geoMap = L.map("geoMap").setView([41.3111,69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(geoMap);
+    let geoMarker=null, geoCircle=null, currentGeoNodeId=null;
+    geoMap.on("click",(e)=> placeGeo(e.latlng.lat,e.latlng.lng,true));
+    function placeGeo(lat,lng,pan){
+      const r=+($("geoRadius").value||1000);
+      if(geoMarker) geoMarker.setLatLng([lat,lng]); else geoMarker=L.marker([lat,lng]).addTo(geoMap);
+      if(geoCircle){ geoCircle.setLatLng([lat,lng]); geoCircle.setRadius(r); }
+      else geoCircle=L.circle([lat,lng],{radius:r,color:"#2563eb"}).addTo(geoMap);
+      if(pan) geoMap.setView([lat,lng], 13);
+    }
+
+    // ===== ЛОГИН =====
+    function showLogin(){ $("loginModal").style.display="flex"; }
+    function hideLogin(){ $("loginModal").style.display="none"; }
+    function login(){
+      const u=$("loginUser").value.trim(), p=$("loginPass").value.trim();
+      if(u===adminUser && p===adminPass){
+        logged=true; hideLogin();
+        $("adminObjects").style.display="";
+        $("adminTree").style.display="";
+        alert("Вход выполнен");
+      } else alert("Неверные данные");
+    }
+
+    // ===== ФОТО: мультизагрузка + удаление =====
+    const addPhotos=$("addPhotos");
+    addPhotos?.addEventListener("change", ()=>{
+      const box=$("photoPreview"); box.innerHTML="";
+      [...addPhotos.files].forEach((f,idx)=>{
+        const r=new FileReader();
+        r.onload=e=>{
+          const d=document.createElement("div"); d.className="thumb";
+          d.innerHTML=`<img src="${e.target.result}"><button class="del" data-i="${idx}">×</button>`;
+          box.appendChild(d);
+        };
+        r.readAsDataURL(f);
+      });
+    });
+    $("photoPreview")?.addEventListener("click",(e)=>{
+      const btn=e.target.closest(".del"); if(!btn) return;
+      const i=+btn.dataset.i;
+      const dt=new DataTransfer();
+      [...addPhotos.files].forEach((f,idx)=>{ if(idx!==i) dt.items.add(f); });
+      addPhotos.files=dt.files;
+      addPhotos.dispatchEvent(new Event("change"));
+    });
+  </script>
+  <script>
+    // ===== ДЕРЕВО — UI =====
+    function renderTreeUI(){
+      const root=$("tree"); root.innerHTML="";
+      cmsTree.forEach(n=> root.appendChild(renderNode(n)));
+      persistTree();
+      rebuildTagsUI();
+      rebuildFiltersUI();
+      rebuildFormUI();
+    }
+
+    function renderNode(node){
+      const li=document.createElement("li");
+      const row=document.createElement("div"); row.className="node-row";
+      const name=document.createElement("input"); name.className="node-label"; name.value=node.label;
+      const kind=document.createElement("select");
+      ["folder","field"].forEach(k=>{
+        const o=document.createElement("option"); o.value=k; o.textContent=k; if(node.kind===k) o.selected=true; kind.appendChild(o);
+      });
+      const btnAdd=document.createElement("button"); btnAdd.className="btn"; btnAdd.textContent="+ Подузел";
+      const btnGeo=document.createElement("button"); btnGeo.className="btn"; btnGeo.textContent="Гео";
+      const btnDel=document.createElement("button"); btnDel.className="btn btn-danger"; btnDel.textContent="Удалить";
+
+      name.oninput=()=>{ node.label=name.value; persistTree(); rebuildTagsUI(); };
+      kind.onchange=()=>{
+        node.kind=kind.value;
+        if(node.kind==="field" && !node.field){
+          node.field={ key:suggestKey(node.label), type:"text", label:node.label, options:[], required:false, inFilter:false, rangeInFilter:false };
+        }
+        if(node.kind==="folder"){ delete node.field; }
+        persistTree(); renderTreeUI();
+      };
+
+      btnAdd.onclick=()=>{
+        node.children=node.children||[];
+        node.children.push({id:uid(), kind:"folder", label:"Новый узел", children:[]});
+        renderTreeUI();
+      };
+      btnDel.onclick=()=>{
+        if(!confirm("Удалить узел и поддерево?")) return;
+        removeNodeById(cmsTree,node.id); renderTreeUI();
+      };
+      btnGeo.onclick=()=>{
+        currentGeoNodeId=node.id;
+        $("geoNodeName").value=node.label;
+        $("geoRadius").value = node.geo?.radius || 1000;
+        if(node.geo){ placeGeo(node.geo.lat,node.geo.lng,true); }
+        else { geoMarker&&geoMarker.remove(); geoCircle&&geoCircle.remove(); geoMarker=null; geoCircle=null; }
+        // без scrollIntoView — чтобы страница не «прыгала»
+        geoMap.invalidateSize();
+      };
+
+      row.appendChild(name);
+      row.appendChild(kind);
+      row.appendChild(btnAdd);
+      row.appendChild(btnGeo);
+      row.appendChild(btnDel);
+      li.appendChild(row);
+
+      // если это поле — показать настройку поля
+      if(node.kind==="field" && node.field){
+        const f=node.field;
+        const cfg=document.createElement("div"); cfg.className="fieldbox";
+        cfg.innerHTML=`
+          <input class="mono" value="${f.key}" title="ключ" oninput="onFld(nodeById('${node.id}'),'key',this.value)">
+          <input value="${f.label}" title="подпись" oninput="onFld(nodeById('${node.id}'),'label',this.value)">
+          <select onchange="onFld(nodeById('${node.id}'),'type',this.value)">
+            <option ${f.type==='text'?'selected':''}>text</option>
+            <option ${f.type==='number'?'selected':''}>number</option>
+            <option ${f.type==='select'?'selected':''}>select</option>
+            <option ${f.type==='multiselect'?'selected':''}>multiselect</option>
+          </select>
+          <label class="pill"><input type="checkbox" ${f.required?'checked':''} onchange="onFld(nodeById('${node.id}'),'required',this.checked)"> обязательное</label>
+          <label class="pill"><input type="checkbox" ${f.inFilter?'checked':''} onchange="onFld(nodeById('${node.id}'),'inFilter',this.checked)"> в фильтрах</label>
+          <label class="pill"><input type="checkbox" ${f.rangeInFilter?'checked':''} ${f.type!=='number'?'disabled':''}
+            onchange="onFld(nodeById('${node.id}'),'rangeInFilter',this.checked)"> диапазон</label>
+          <input class="mono" placeholder="опции через запятую" value="${(f.options||[]).join(', ')}"
+            ${f.type==='select'||f.type==='multiselect'?'':'disabled'}
+            oninput="onFldOptions(nodeById('${node.id}'), this.value)">
+        `;
+        li.appendChild(cfg);
+      }
+
+      // дети
+      const ul=document.createElement("ul"); ul.className="tree children";
+      (node.children||[]).forEach(ch=> ul.appendChild(renderNode(ch)));
+      li.appendChild(ul);
+      return li;
+    }
+
+    function nodeById(id){ return findNodeById(id); }
+    function suggestKey(s){ return (s||"field").toLowerCase().replace(/[^\w]+/g,'_'); }
+
+    function onFld(node, prop, val){
+      if(!node?.field) return;
+      if(prop==="type"){ node.field.type=val; if(val!=="number") node.field.rangeInFilter=false; }
+      else if(prop==="required"){ node.field.required=!!val; }
+      else if(prop==="inFilter"){ node.field.inFilter=!!val; }
+      else if(prop==="rangeInFilter"){ node.field.rangeInFilter=!!val; }
+      else if(prop==="key"){ node.field.key=suggestKey(val); }
+      else if(prop==="label"){ node.field.label=val; node.label=val; }
+      persistTree(); rebuildFiltersUI(); rebuildFormUI(); renderTreeUI(); // пересоберём UI
+    }
+    function onFldOptions(node, str){
+      if(!node?.field) return;
+      node.field.options = str.split(",").map(s=>s.trim()).filter(Boolean);
+      persistTree(); rebuildFiltersUI(); rebuildFormUI();
+    }
+
+    // ===== ГЕО-СОХРАНЕНИЕ =====
+    function saveGeoForNode(){
+      if(!currentGeoNodeId){ alert("Выбери узел и нажми «Гео»"); return; }
+      if(!geoMarker){ alert("Кликни по карте, чтобы поставить точку"); return; }
+      const n=findNodeById(currentGeoNodeId);
+      const latlng=geoMarker.getLatLng(); const r=+($("geoRadius").value||1000);
+      n.geo={lat:latlng.lat,lng:latlng.lng,radius:r};
+      persistTree();
+      alert("Гео сохранено");
+    }
+    function clearGeoForNode(){
+      if(!currentGeoNodeId) return;
+      const n=findNodeById(currentGeoNodeId); delete n.geo; persistTree();
+      geoMarker&&geoMarker.remove(); geoCircle&&geoCircle.remove(); geoMarker=null; geoCircle=null;
+      alert("Гео очищено");
+    }
+
+    // ===== ТЕГИ (папки) ДЛЯ ФИЛЬТРА и ФОРМЫ =====
+    function rebuildTagsUI(){
+      const folders=flattenFolders();
+      // фильтр-теги
+      const fwrap=$("filterTags"); fwrap.innerHTML="";
+      folders.forEach(f=>{
+        const id="ft_"+f.id;
+        fwrap.insertAdjacentHTML("beforeend", `
+          <label class="tag-check"><input type="checkbox" id="${id}" data-id="${f.id}"><span>${f.path.join(" / ")}</span></label>
+        `);
+      });
+      // форма-теги
+      const awrap=$("addTags"); awrap.innerHTML="";
+      folders.forEach(f=>{
+        const id="at_"+f.id;
+        awrap.insertAdjacentHTML("beforeend", `
+          <label class="tag-check"><input type="checkbox" id="${id}" data-id="${f.id}"><span>${f.path.join(" / ")}</span></label>
+        `);
+      });
+    }
+
+    // ===== ДИНАМИКА ФИЛЬТРОВ ПО ПОЛЯМ =====
+    function rebuildFiltersUI(){
+      const box=$("dynamicFilters"); box.innerHTML="";
+      const fields=collectFieldNodes();
+      fields.forEach(f=>{
+        const col=document.createElement("div"); col.className="col";
+        col.innerHTML=`<label>${f.label}</label>`;
+        if(f.type==="text"){
+          col.innerHTML+=`<input id="f_${f.key}" placeholder="Поиск по тексту" ${f.inFilter?'':'disabled'}>`;
+        }else if(f.type==="number"){
+          if(f.rangeInFilter){
+            col.innerHTML+=`
+              <div class="row" style="gap:6px">
+                <input type="number" id="f_${f.key}_min" placeholder="от" style="width:120px" ${f.inFilter?'':'disabled'}>
+                <input type="number" id="f_${f.key}_max" placeholder="до" style="width:120px" ${f.inFilter?'':'disabled'}>
+              </div>`;
+          }else{
+            col.innerHTML+=`<input type="number" id="f_${f.key}" placeholder="значение" ${f.inFilter?'':'disabled'}>`;
+          }
+        }else if(f.type==="select"){
+          const opts=(f.options||[]).map(o=>`<option>${o}</option>`).join("");
+          col.innerHTML+=`<select id="f_${f.key}" ${f.inFilter?'':'disabled'}><option value="">Любой</option>${opts}</select>`;
+        }else if(f.type==="multiselect"){
+          const id=`f_${f.key}`;
+          const checks=(f.options||[]).map(o=>`<label class="pill"><input type="checkbox" name="${id}" value="${o}" ${f.inFilter?'':'disabled'}>${o}</label>`).join(" ");
+          col.innerHTML+=`<div id="${id}" class="inline">${checks}</div>`;
+        }
+        box.appendChild(col);
+      });
+    }
+
+    // ===== ДИНАМИКА ФОРМЫ ДОБАВЛЕНИЯ ПО ПОЛЯМ =====
+    function rebuildFormUI(){
+      const box=$("dynamicFormFields"); box.innerHTML="";
+      const fields=collectFieldNodes();
+      fields.forEach(f=>{
+        const col=document.createElement("div"); col.className="col";
+        col.innerHTML=`<label>${f.label}${f.required?' *':''}</label>`;
+        if(f.type==="text"){
+          col.innerHTML+=`<input id="a_${f.key}" ${f.required?'required':''}>`;
+        }else if(f.type==="number"){
+          col.innerHTML+=`<input type="number" id="a_${f.key}" ${f.required?'required':''}>`;
+        }else if(f.type==="select"){
+          const opts=(f.options||[]).map(o=>`<option>${o}</option>`).join("");
+          col.innerHTML+=`<select id="a_${f.key}" ${f.required?'required':''}><option value="">—</option>${opts}</select>`;
+        }else if(f.type==="multiselect"){
+          const id=`a_${f.key}`;
+          const checks=(f.options||[]).map(o=>`<label class="pill"><input type="checkbox" name="${id}" value="${o}">${o}</label>`).join(" ");
+          col.innerHTML+=`<div id="${id}" class="inline">${checks}</div>`;
+        }
+        box.appendChild(col);
+      });
+    }
+
+    // ===== CRUD ОБЪЕКТОВ =====
+    function getSelectedTagIds(prefix){
+      return [...document.querySelectorAll(`#${prefix} input[type=checkbox]:checked`)].map(el=> el.dataset.id);
+    }
+
+    function saveObject(){
+      const tagIds=getSelectedTagIds("addTags");
+      if(tagIds.length===0){ if(!confirm("Сохранить без тегов?")) return; }
+
+      // собрать значения полей
+      const fields={};
+      const defs=collectFieldNodes();
+      for(const f of defs){
+        if(f.type==="multiselect"){
+          const name=`a_${f.key}`;
+          const vals=[...document.querySelectorAll(`#${name} input[type=checkbox]:checked`)].map(el=>el.value);
+          if(f.required && vals.length===0) return alert(`Поле «${f.label}» обязательно`);
+          if(vals.length) fields[f.key]=vals;
+        }else{
+          const el=$(`a_${f.key}`); if(!el) continue;
+          const v=el.value;
+          if(f.required && !v) return alert(`Поле «${f.label}» обязательно`);
+          if(v!==""){
+            fields[f.key] = f.type==="number" ? (+v||0) : v;
+          }
+        }
+      }
+
+      const lat=parseFloat($("addLat").value)||null;
+      const lng=parseFloat($("addLng").value)||null;
+
+      const photos=[];
+      document.querySelectorAll("#photoPreview img").forEach(img=> photos.push(img.src));
+
+      const obj={
+        id: editId || uid(),
+        tagIds,
+        fields,
+        lat, lng,
+        photos
+      };
+
+      if(editId){
+        const i=objects.findIndex(o=>o.id===editId);
+        if(i>=0) objects[i]=obj;
+        editId=null;
+      } else objects.push(obj);
+
+      persistObjects();
+      renderResults(objects);
+      resetForm();
+      alert("Объект сохранён");
+    }
+
+    function editObject(id){
+      const o=objects.find(x=>x.id===id); if(!o) return;
+      editId=id;
+
+      // теги
+      document.querySelectorAll("#addTags input[type=checkbox]").forEach(el=> el.checked = o.tagIds?.includes(el.dataset.id));
+
+      // поля
+      const defs=collectFieldNodes();
+      defs.forEach(f=>{
+        if(f.type==="multiselect"){
+          const name=`a_${f.key}`;
+          const vals=new Set(o.fields?.[f.key]||[]);
+          document.querySelectorAll(`#${name} input[type=checkbox]`).forEach(el=> el.checked=vals.has(el.value));
+        }else{
+          const el=$(`a_${f.key}`); if(el) el.value = (o.fields?.[f.key] ?? "");
+        }
+      });
+
+      // гео
+      $("addLat").value=o.lat||""; $("addLng").value=o.lng||"";
+      if(o.lat!=null && o.lng!=null) setObjLatLng(o.lat,o.lng,true);
+
+      // фото
+      const box=$("photoPreview"); box.innerHTML="";
+      (o.photos||[]).forEach((src,idx)=>{
+        const d=document.createElement("div"); d.className="thumb";
+        d.innerHTML=`<img src="${src}"><button class="del" data-i="${idx}">×</button>`;
+        box.appendChild(d);
+      });
+
+      $("adminObjects").scrollIntoView({behavior:"smooth"});
+    }
+
+    function deleteObject(id){
+      if(!confirm("Удалить объект?")) return;
+      objects=objects.filter(o=>o.id!==id);
+      persistObjects(); renderResults(objects);
+    }
+
+    function resetForm(){
+      document.querySelectorAll("#adminObjects input").forEach(el=>{ if(el.type!=="file") el.value=""; });
+      document.querySelectorAll("#adminObjects select").forEach(el=> el.value=el.options[0]?.value||"");
+      document.querySelectorAll("#addTags input[type=checkbox]").forEach(el=> el.checked=false);
+      document.querySelectorAll("#adminObjects input[type=checkbox]").forEach(el=> el.checked=false);
+      $("photoPreview").innerHTML="";
+      editId=null;
+      adminObjMarker&&adminObjMarker.remove(); adminObjMarker=null;
+    }
+
+    // ===== РЕНДЕР РЕЗУЛЬТАТОВ =====
+    function renderResults(list){
+      const res=$("results"); res.innerHTML="";
+      markersLayer.clearLayers();
+
+      // карты узлов (id -> путь "A / B / C")
+      const folders=flattenFolders();
+      const pathById = Object.fromEntries(folders.map(f=> [f.id, f.path.join(" / ")]));
+
+      list.forEach(o=>{
+        const photos=(o.photos||[]).map(p=>`<img src="${p}">`).join("");
+        const url = location.origin + location.pathname + "?id=" + o.id;
+
+        const fieldDefs=collectFieldNodes();
+        const chipsFields = fieldDefs.map(f=>{
+          const v=o.fields?.[f.key];
+          if(v==null || (Array.isArray(v)&&!v.length)) return "";
+          return `<span class="chip">${f.label}: ${Array.isArray(v)? v.join(", ") : v}</span>`;
+        }).filter(Boolean).join(" ");
+
+        const chipsTags = (o.tagIds||[]).map(id=>`<span class="chip">${pathById[id]||id}</span>`).join(" ");
+
+        res.insertAdjacentHTML("beforeend",`
+          <div class="item" data-id="${o.id}">
+            <div class="hdr"><b>${o.fields?.title||"(без названия)"}</b><span class="price">${o.fields?.price?o.fields.price+" $":""}</span></div>
+            <div class="inline" style="margin-top:6px">${chipsTags}</div>
+            <div class="inline" style="margin-top:6px">${chipsFields}</div>
+            <div class="gallery">${photos}</div>
+            <div class="inline" style="margin-top:8px">
+              <a target="_blank" href="https://t.me/${TELEGRAM_USER}?text=${encodeURIComponent("Здравствуйте, интересует объявление: "+url)}">Написать в Telegram</a>
+              <button class="btn" onclick="editObject('${o.id}')">✏️ Редактировать</button>
+              <button class="btn btn-danger" onclick="deleteObject('${o.id}')">🗑 Удалить</button>
+            </div>
+          </div>
+        `);
+
+        if(o.lat!=null && o.lng!=null){
+          const m=L.marker([o.lat,o.lng]).addTo(markersLayer);
+          m.bindPopup(`<b>${o.fields?.title||"(без названия)"}</b><br>${o.fields?.price?o.fields.price+" $":""}`);
+        }
+      });
+    }
+
+    // ===== ФИЛЬТРАЦИЯ =====
+    function applyFilters(){
+      // выбранные теги
+      const pickedTags = getSelectedTagIds("filterTags");
+
+      let list=objects.slice();
+      if(pickedTags.length){
+        list = list.filter(o=> (o.tagIds||[]).some(id=> pickedTags.includes(id)));
+      }
+
+      // по полям
+      const defs=collectFieldNodes();
+      for(const f of defs){
+        if(!f.inFilter) continue;
+        if(f.type==="text"){
+          const v=$(`f_${f.key}`)?.value?.trim().toLowerCase();
+          if(v) list=list.filter(o=> String(o.fields?.[f.key]||"").toLowerCase().includes(v));
+        }else if(f.type==="number"){
+          if(f.rangeInFilter){
+            const min=+($(`f_${f.key}_min`)?.value||"") || -Infinity;
+            const max=+($(`f_${f.key}_max`)?.value||"") || +Infinity;
+            list=list.filter(o=>{
+              const val=o.fields?.[f.key]; return (val!=null) && (val>=min && val<=max);
+            });
+          }else{
+            const v=$(`f_${f.key}`)?.value;
+            if(v!=="") list=list.filter(o=> (o.fields?.[f.key] ?? null) === (+v));
+          }
+        }else if(f.type==="select"){
+          const v=$(`f_${f.key}`)?.value;
+          if(v) list=list.filter(o=> (o.fields?.[f.key] ?? "") === v);
+        }else if(f.type==="multiselect"){
+          const vals=[...document.querySelectorAll(`#f_${f.key} input[type=checkbox]:checked`)].map(el=>el.value);
+          if(vals.length){
+            list=list.filter(o=>{
+              const arr=o.fields?.[f.key]||[];
+              return vals.every(x=> arr.includes(x));
+            });
+          }
+        }
+      }
+
+      renderResults(list);
+    }
+
+    function resetFilters(){
+      document.querySelectorAll("#filterTags input[type=checkbox]").forEach(el=> el.checked=false);
+      const defs=collectFieldNodes();
+      defs.forEach(f=>{
+        const el1=$(`f_${f.key}`); if(el1) el1.value="";
+        const el2=$(`f_${f.key}_min`); if(el2) el2.value="";
+        const el3=$(`f_${f.key}_max`); if(el3) el3.value="";
+        document.querySelectorAll(`#f_${f.key} input[type=checkbox]`).forEach(e=> e.checked=false);
+      });
+      renderResults(objects);
+    }
+
+    // ===== INIT =====
+    function safeInit(){
+      try{
+        renderTreeUI();
+        renderResults(objects);
+      }catch(e){
+        console.error(e);
+        alert("Ошибка инициализации. Сброшу конфигурацию.");
+        localStorage.removeItem("cms_tree_v181");
+        location.reload();
+      }
+    }
+    safeInit();
+
+    // deeplink ?id=...
+    const qs=new URLSearchParams(location.search);
+    const openId=qs.get("id");
+    if(openId){
+      const o=objects.find(x=>x.id===openId);
+      if(o?.lat!=null && o?.lng!=null){ map.setView([o.lat,o.lng], 15); }
+    }
+
+    // кнопки добавления корня
+    function addRoot(){
+      cmsTree.push({id:uid(), kind:"folder", label:"Новый корень", children:[]});
+      renderTreeUI();
+    }
+  </script>
+</body>
+</html>
