@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Realty v2.0-stable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin="anonymous"
+  />
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --b:#e5e7eb;
+      --accent:#2563eb; --accent-2:#1e40af; --danger:#dc2626;
+    }
+    *{ box-sizing:border-box }
+    body{ margin:0; background:var(--bg); color:var(--text); font-family:system-ui, Arial, sans-serif }
+    header{ background:var(--accent); color:#fff; padding:10px 14px; font-weight:700 }
+    main{ max-width:1200px; margin:0 auto; padding:12px }
+    .card{ background:var(--card); border:1px solid var(--b); border-radius:12px; padding:12px; margin:10px 0; box-shadow:0 3px 16px rgba(0,0,0,.04) }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end }
+    .col{ display:flex; flex-direction:column; gap:6px; min-width:200px }
+    label{ font-size:12px; color:var(--muted) }
+    input, select, button{ font-size:14px; padding:8px; border:1px solid var(--b); border-radius:8px; background:#fff }
+    button{ cursor:pointer }
+    .btn{ background:#fff }
+    .btn-primary{ background:var(--accent); color:#fff; border-color:var(--accent-2) }
+    .btn-danger{ background:#fff; color:var(--danger); border-color:#fecaca }
+    .btn-ghost{ background:transparent; border:1px dashed var(--b); color:var(--muted) }
+    .note{ font-size:12px; color:var(--muted) }
+    #mapMain{ height:420px; border-radius:12px; border:1px solid var(--b) }
+    #adminMap{ height:240px; border-radius:10px; border:1px solid var(--b) }
+    .list{ display:grid; gap:10px }
+    .item{ border:1px solid var(--b); border-radius:10px; padding:10px; background:#fff; cursor:pointer; transition:.2s }
+    .item:hover{ box-shadow:0 6px 20px rgba(0,0,0,.08) }
+    .hdr{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap }
+    .price{ font-weight:800 }
+    .thumbs{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px }
+    .thumb{ position:relative }
+    .thumb img{ width:100px; height:80px; object-fit:cover; border-radius:8px; border:1px solid var(--b) }
+    .thumb .del{ position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer }
+    .chip{ display:inline-block; background:#eef2ff; border:1px solid #c7d2fe; border-radius:999px; padding:2px 8px; font-size:12px; margin:2px 4px 0 0 }
+    .pill{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--b); border-radius:999px; padding:4px 10px; background:#fff }
+    .tree ul{ list-style:none; padding-left:18px; margin:6px 0 }
+    .tree .node{ display:flex; gap:6px; align-items:center; margin:4px 0 }
+    .tree .node input[type="text"]{ padding:4px 6px; border-radius:6px; border:1px solid var(--b); width:180px }
+    .tree .icon{ width:30px; text-align:center; font-size:18px }
+    /* Modal detail */
+    .modal{ position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; z-index:1000 }
+    .modal-content{ background:#fff; border-radius:12px; max-width:900px; width:100%; max-height:90vh; overflow:auto; padding:16px; position:relative }
+    .close{ position:absolute; top:8px; right:12px; font-size:22px; cursor:pointer }
+    .slider{ position:relative; overflow:hidden; margin-bottom:10px }
+    .slides{ display:flex; transition:transform .3s }
+    .slides img{ width:900px; max-width:100%; height:480px; object-fit:cover; border-radius:12px }
+    .slider button{ position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.5); color:#fff; border:none; font-size:22px; padding:6px 12px; cursor:pointer }
+    .slider .prev{ left:10px } .slider .next{ right:10px }
+    /* Auth */
+    .authbar{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px; background:#f8fafc; border:1px dashed var(--b); border-radius:10px; margin-bottom:10px }
+    .hidden{ display:none !important }
+  </style>
+</head>
+<body>
+  <header>🏠 Realty v2.0-stable</header>
+  <main>
+    <!-- Панель авторизации -->
+    <div class="authbar card">
+      <div>
+        <b>Админ-доступ</b>
+        <span id="authStatus" class="note">Вы не вошли</span>
+      </div>
+      <div id="authControls">
+        <input id="authUser" placeholder="логин" style="width:140px">
+        <input id="authPass" type="password" placeholder="пароль" style="width:140px">
+        <button class="btn btn-primary" onclick="doLogin()">Войти</button>
+      </div>
+      <div id="authLogout" class="hidden">
+        <button class="btn" onclick="doLogout()">Выйти</button>
+      </div>
+    </div>
+
+    <!-- Фильтр -->
+    <div class="card">
+      <h3>Фильтр</h3>
+      <div id="filterTree" class="row"></div>
+      <div class="row">
+        <div class="col"><label>Цена, $</label><div class="row"><input type="number" id="fPriceMin" placeholder="от"><input type="number" id="fPriceMax" placeholder="до"></div></div>
+        <div class="col"><label>Комнаты</label><div class="row"><input type="number" id="fRoomsMin" placeholder="от"><input type="number" id="fRoomsMax" placeholder="до"></div></div>
+        <div class="col"><label>Площадь, м²</label><div class="row"><input type="number" id="fAreaMin" placeholder="от"><input type="number" id="fAreaMax" placeholder="до"></div></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>По карте: радиус (м)</label><input type="number" id="fRadius" placeholder="например 1000"></div>
+        <div class="col note">Кликни по карте, чтобы задать центр круга</div>
+        <div class="col"><label>&nbsp;</label><label class="pill"><input type="checkbox" id="onlyAfterApply" checked> Метки только после «Применить»</label></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="applyFilters()">Применить</button>
+        <button class="btn" onclick="resetFilters()">Сбросить</button>
+      </div>
+    </div>
+
+    <!-- Карта -->
+    <div id="mapMain" class="card"></div>
+
+    <!-- Результаты -->
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <!-- Админка -->
+    <div id="adminWrap" class="card hidden">
+      <h3>Админка</h3>
+
+      <div class="card">
+        <h4>Дерево категорий</h4>
+        <div class="row">
+          <button class="btn" onclick="addRootNode()">+ Корневой узел</button>
+          <span class="note">Любая глубина: Квартира → Аренда → Посуточно → ...</span>
+        </div>
+        <div id="treeAdmin" class="tree"></div>
+      </div>
+
+      <div class="card">
+        <h4>Добавить / редактировать объект</h4>
+        <div class="row">
+          <div class="col"><label>Заголовок *</label><input id="aTitle"></div>
+          <div class="col"><label>Цена, $ *</label><input id="aPrice" type="number"></div>
+          <div class="col"><label>Комнаты</label><input id="aRooms" type="number"></div>
+          <div class="col"><label>Площадь, м²</label><input id="aArea" type="number"></div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Основная категория</label>
+            <select id="aPrimaryNode"></select>
+          </div>
+          <div class="col" style="flex:1">
+            <label>Дополнительные категории</label>
+            <div id="aNodeChecks" class="row" style="gap:6px"></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col"><label>Lat</label><input id="aLat" placeholder="клик на карту ниже"></div>
+          <div class="col"><label>Lng</label><input id="aLng" placeholder="клик на карту ниже"></div>
+        </div>
+        <div id="adminMap" class="card"></div>
+
+        <div class="row">
+          <div class="col" style="flex:1">
+            <label>Фото</label>
+            <input type="file" id="aPhotos" multiple accept="image/*" />
+            <div id="aGallery" class="thumbs"></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn btn-primary" onclick="saveObject()">💾 Сохранить</button>
+          <button class="btn" onclick="resetForm()">🧹 Очистить</button>
+        </div>
+        <div class="note">Поля с * обязательны</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Модалка детального просмотра -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // ===== helpers & storage
+    const $ = id => document.getElementById(id);
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+    const LS_OBJECTS = "objects_v20";
+    const LS_TREE    = "tree_v20";
+    const LS_AUTH    = "auth_v20";
+
+    let objects = JSON.parse(localStorage.getItem(LS_OBJECTS) || "[]");
+    let tree    = JSON.parse(localStorage.getItem(LS_TREE) || "[]");
+    function persist(){ localStorage.setItem(LS_OBJECTS, JSON.stringify(objects)); }
+    function persistTree(){ localStorage.setItem(LS_TREE, JSON.stringify(tree)); }
+
+    // ===== auth (простая)
+    function isAuthed(){ return localStorage.getItem(LS_AUTH)==="true"; }
+    function doLogin(){
+      const u = $("authUser").value.trim();
+      const p = $("authPass").value.trim();
+      // простейшие креды (для прототипа): admin / 1234
+      if(u==="admin" && p==="1234"){
+        localStorage.setItem(LS_AUTH,"true");
+        applyAuthUI();
+      }else{
+        alert("Неверные логин/пароль (админ/1234)");
+      }
+    }
+    function doLogout(){
+      localStorage.removeItem(LS_AUTH);
+      applyAuthUI();
+    }
+    function applyAuthUI(){
+      const authed = isAuthed();
+      $("authStatus").textContent = authed ? "Вы вошли как admin" : "Вы не вошли";
+      $("authControls").classList.toggle("hidden", authed);
+      $("authLogout").classList.toggle("hidden", !authed);
+      $("adminWrap").classList.toggle("hidden", !authed);
+    }
+
+    // ===== map (cache-bust чтобы не зависеть от старого кеша)
+    const TILE = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?cb=2025-09-05";
+    const map = L.map("mapMain").setView([41.3111,69.2797], 12);
+    L.tileLayer(TILE, { attribution:"© OpenStreetMap" }).addTo(map);
+    let markersLayer = L.layerGroup().addTo(map);
+    let filterCenter = null, filterCircle = null;
+
+    map.on("click", e=>{
+      filterCenter = e.latlng;
+      const r = +($("fRadius").value||0);
+      if(r>0) drawFilterCircle(filterCenter, r);
+    });
+    function drawFilterCircle(center, r){
+      if(filterCircle){ filterCircle.setLatLng(center).setRadius(r); }
+      else filterCircle = L.circle(center, { radius:r, color:"#2563eb" }).addTo(map);
+    }
+
+    // admin map
+    const adminMap = L.map("adminMap").setView([41.3111,69.2797], 12);
+    L.tileLayer(TILE, { attribution:"© OpenStreetMap" }).addTo(adminMap);
+    let adminMarker = null;
+    adminMap.on("click", e=>{
+      $("aLat").value = e.latlng.lat.toFixed(6);
+      $("aLng").value = e.latlng.lng.toFixed(6);
+      if(adminMarker) adminMarker.setLatLng(e.latlng);
+      else adminMarker = L.marker(e.latlng).addTo(adminMap);
+    });
+
+    // ===== tree (бесконечная глубина)
+    function addRootNode(){
+      const label = prompt("Название корневого узла:");
+      if(!label) return;
+      tree.push({ id:uid(), label, icon:"", children:[] });
+      persistTree(); renderTreeAdmin(); renderFilterTree(); fillAdminNodeSelectors();
+    }
+    function addChildNode(parentId){
+      const label = prompt("Название подкатегории:");
+      if(!label) return;
+      const p = findNodeById(parentId);
+      if(!p.children) p.children=[];
+      p.children.push({ id:uid(), label, icon:"", children:[] });
+      persistTree(); renderTreeAdmin(); renderFilterTree(); fillAdminNodeSelectors();
+    }
+    function removeNode(nodeId){
+      if(!confirm("Удалить узел и всех его потомков?")) return;
+      removeNodeRecursive(tree, nodeId);
+      persistTree(); renderTreeAdmin(); renderFilterTree(); fillAdminNodeSelectors();
+    }
+    function removeNodeRecursive(list, id){
+      for(let i=0;i<list.length;i++){
+        if(list[i].id===id){ list.splice(i,1); return true; }
+        if(list[i].children && removeNodeRecursive(list[i].children,id)) return true;
+      }
+      return false;
+    }
+    function findNodeById(id){
+      let found=null;
+      (function walk(arr){
+        if(!arr) return;
+        for(const n of arr){
+          if(n.id===id){ found=n; return; }
+          if(n.children) walk(n.children);
+          if(found) return;
+        }
+      })(tree);
+      return found;
+    }
+    function flattenNodes(arr=tree, out=[]){
+      for(const n of arr){
+        out.push(n);
+        if(n.children?.length) flattenNodes(n.children, out);
+      }
+      return out;
+    }
+    function getNodePathLabel(id){
+      const path=[];
+      let target=null;
+      (function walk(arr,stack){
+        for(const n of arr){
+          const st=[...stack, n];
+          if(n.id===id){ target=st; return; }
+          if(n.children?.length) walk(n.children, st);
+          if(target) return;
+        }
+      })(tree,[]);
+      return target ? target.map(n=> (n.icon||"") + n.label).join(" / ") : "";
+    }
+    function renderTreeAdmin(){
+      const wrap = $("treeAdmin"); wrap.innerHTML="";
+      function renderList(arr){
+        const ul = document.createElement("ul");
+        for(const n of arr){
+          const li = document.createElement("li");
+          const row = document.createElement("div");
+          row.className="node";
+          const icon = document.createElement("input");
+          icon.className="icon"; icon.maxLength=2; icon.value = n.icon||"";
+          icon.oninput=()=>{ n.icon=icon.value; persistTree(); renderFilterTree(); fillAdminNodeSelectors(); };
+          const label = document.createElement("input");
+          label.type="text"; label.value=n.label;
+          label.oninput=()=>{ n.label=label.value; persistTree(); renderFilterTree(); fillAdminNodeSelectors(); };
+          const bAdd = document.createElement("button"); bAdd.className="btn"; bAdd.textContent="+ Подузел";
+          bAdd.onclick=()=> addChildNode(n.id);
+          const bDel = document.createElement("button"); bDel.className="btn btn-danger"; bDel.textContent="Удалить";
+          bDel.onclick=()=> removeNode(n.id);
+          row.append(icon,label,bAdd,bDel);
+          li.append(row);
+          if(n.children?.length) li.append(renderList(n.children));
+          ul.append(li);
+        }
+        return ul;
+      }
+      wrap.append(renderList(tree));
+    }
+
+    // фильтр-дерево (чекбоксы)
+    function renderFilterTree(){
+      const box = $("filterTree"); box.innerHTML="";
+      function render(arr){
+        const frag = document.createDocumentFragment();
+        for(const n of arr){
+          const lbl = document.createElement("label");
+          lbl.className="pill";
+          lbl.innerHTML = `<input type="checkbox" class="fNode" value="${n.id}"> ${(n.icon||"")}${n.label}`;
+          frag.append(lbl);
+          if(n.children?.length) frag.append(render(n.children));
+        }
+        return frag;
+      }
+      box.append(render(tree));
+    }
+
+    // селекторы в админ-форме: основная категория + чекбоксы дополнительных
+    function fillAdminNodeSelectors(){
+      const flat = flattenNodes();
+      $("aPrimaryNode").innerHTML = `<option value="">—</option>` + flat.map(n=>`<option value="${n.id}">${(n.icon||"")}${getNodePathLabel(n.id)||n.label}</option>`).join("");
+      const checks = flat.map(n=>`<label class="pill"><input type="checkbox" class="aNodeExtra" value="${n.id}"> ${(n.icon||"")}${n.label}</label>`).join("");
+      $("aNodeChecks").innerHTML = checks;
+    }
+
+    // ===== photos
+    let photoFiles = [];
+    $("aPhotos").addEventListener("change", ()=>{
+      const files = [...$("aPhotos").files];
+      files.forEach(f=>{
+        const fr = new FileReader();
+        fr.onload = (e)=>{
+          photoFiles.push(e.target.result);
+          const d = document.createElement("div");
+          d.className="thumb";
+          d.innerHTML=`<img src="${e.target.result}"><button class="del">×</button>`;
+          $("aGallery").appendChild(d);
+        };
+        fr.readAsDataURL(f);
+      });
+      $("aPhotos").value="";
+    });
+    $("aGallery").addEventListener("click",(e)=>{
+      const btn = e.target.closest(".del"); if(!btn) return;
+      const idx = [...$("aGallery").children].indexOf(btn.parentElement);
+      if(idx>-1) photoFiles.splice(idx,1);
+      btn.parentElement.remove();
+    });
+  </script>
+  <script>
+    // ===== modal (detail)
+    let modalIdx=0, modalPhotos=[], modalObj=null;
+    function openModal(obj){
+      modalObj=obj; modalPhotos=(obj.photos||[]).slice(); modalIdx=0;
+      const nodeChips = [obj.primaryNode, ...(obj.nodes||[])]
+        .filter(Boolean)
+        .map(id=>`<span class="chip">${getNodePathLabel(id)}</span>`).join("");
+
+      const slides = modalPhotos.length
+        ? modalPhotos.map(p=>`<img src="${p}">`).join("")
+        : `<div style="height:200px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:12px">Нет фото</div>`;
+
+      $("modalBody").innerHTML = `
+        <div class="hdr" style="margin-bottom:8px">
+          <div><b style="font-size:18px">${obj.title||"Объявление"}</b></div>
+          <div class="price">${obj.price? obj.price+" $" : ""}</div>
+        </div>
+        <div class="note" style="margin-bottom:6px">${nodeChips}</div>
+        <div class="slider">
+          <div class="slides" id="slides">${slides}</div>
+          ${modalPhotos.length>1?`<button class="prev" onclick="prevSlide()">‹</button><button class="next" onclick="nextSlide()">›</button>`:""}
+        </div>
+        <div class="row" style="gap:12px">
+          ${chip("Комнаты", obj.rooms)} ${chip("Площадь", obj.area)}
+        </div>
+        ${obj.lat!=null&&obj.lng!=null?`<div class="note" style="margin-top:10px">Координаты: ${obj.lat}, ${obj.lng}</div>`:""}
+        <div class="row" style="margin-top:12px">
+          <button class="btn" onclick="editObject('${obj.id}')">✏ Редактировать</button>
+          <button class="btn" onclick="copyObject('${obj.id}')">📄 Копировать</button>
+          <button class="btn btn-danger" onclick="deleteObject('${obj.id}'); closeModal()">🗑 Удалить</button>
+        </div>
+      `;
+      $("modal").style.display="flex"; updateSlides();
+    }
+    function closeModal(){ $("modal").style.display="none"; }
+    function updateSlides(){
+      const el=$("slides"); if(!el) return;
+      const w=el.firstElementChild? el.firstElementChild.getBoundingClientRect().width : 0;
+      el.style.transform=`translateX(${-modalIdx*w}px)`;
+    }
+    function prevSlide(){ if(!modalPhotos.length) return; modalIdx=(modalIdx-1+modalPhotos.length)%modalPhotos.length; updateSlides(); }
+    function nextSlide(){ if(!modalPhotos.length) return; modalIdx=(modalIdx+1)%modalPhotos.length; updateSlides(); }
+    $("modal").addEventListener("click", e=>{ if(e.target.id==="modal") closeModal(); });
+
+    // ===== chips helper
+    function chip(label,val){
+      if(val==null || val==="" || (Array.isArray(val)&&!val.length)) return "";
+      return `<span class="chip">${label}: ${Array.isArray(val)? val.join(", ") : val}</span>`;
+    }
+
+    // ===== CRUD
+    let editId=null;
+    function selectedExtraNodes(){ return [...document.querySelectorAll(".aNodeExtra:checked")].map(el=>el.value); }
+    function setExtraNodes(ids){ document.querySelectorAll(".aNodeExtra").forEach(el=> el.checked = ids.includes(el.value)); }
+
+    function saveObject(){
+      const title=$("aTitle").value.trim();
+      const price=+$("aPrice").value;
+      if(!title){ alert("Заполни заголовок"); return; }
+      if(!price){ alert("Укажи цену"); return; }
+
+      const obj={
+        id: editId || uid(),
+        title, price,
+        rooms: $("aRooms").value? +$("aRooms").value : null,
+        area:  $("aArea").value? +$("aArea").value : null,
+        lat:   $("aLat").value? +$("aLat").value : null,
+        lng:   $("aLng").value? +$("aLng").value : null,
+        primaryNode: $("aPrimaryNode").value || "",
+        nodes: selectedExtraNodes(),
+        photos: photoFiles.slice()
+      };
+
+      if(editId){
+        const i = objects.findIndex(o=>o.id===editId);
+        if(i>=0) objects[i]=obj;
+        editId=null;
+      }else{
+        objects.push(obj);
+      }
+      persist();
+      // автофокус: если включён режим «метки только после Применить» — включим фильтр по категории нового объекта
+      if($("onlyAfterApply").checked){
+        // отметим primaryNode в чекбоксах фильтра
+        document.querySelectorAll("#filterTree .fNode").forEach(el=>{
+          if(el.value===obj.primaryNode) el.checked=true;
+        });
+        applyFilters(); // покажем только его категорию
+      }else{
+        render(objects, true); // сразу показать всё и маркеры
+      }
+      resetForm();
+    }
+
+    function editObject(id){
+      const o=objects.find(x=>x.id===id); if(!o) return;
+      editId=o.id;
+      $("aTitle").value=o.title||"";
+      $("aPrice").value=o.price||"";
+      $("aRooms").value=o.rooms??"";
+      $("aArea").value=o.area??"";
+      $("aLat").value=o.lat??""; $("aLng").value=o.lng??"";
+      if(o.lat!=null&&o.lng!=null){
+        const ll=L.latLng(o.lat,o.lng);
+        if(adminMarker) adminMarker.setLatLng(ll); else adminMarker=L.marker(ll).addTo(adminMap);
+        adminMap.setView(ll, 14);
+      }
+      $("aPrimaryNode").value = o.primaryNode||"";
+      setExtraNodes(o.nodes||[]);
+      photoFiles = (o.photos||[]).slice();
+      $("aGallery").innerHTML = photoFiles.map(src=>`<div class="thumb"><img src="${src}"><button class="del">×</button></div>`).join("");
+      window.scrollTo({ top: $("adminWrap").getBoundingClientRect().top + window.scrollY - 40, behavior:"smooth" });
+    }
+
+    function copyObject(id){
+      const o=objects.find(x=>x.id===id); if(!o) return;
+      const copy={...o, id:uid(), title:(o.title||"")+" (копия)"};
+      objects.push(copy); persist(); render(objects, !$("onlyAfterApply").checked);
+    }
+
+    function deleteObject(id){
+      if(!confirm("Удалить объявление?")) return;
+      objects = objects.filter(x=>x.id!==id);
+      persist(); render(objects, !$("onlyAfterApply").checked);
+      closeModal();
+    }
+
+    function resetForm(){
+      editId=null;
+      ["aTitle","aPrice","aRooms","aArea","aLat","aLng"].forEach(id=> $(id).value="");
+      $("aPrimaryNode").value="";
+      setExtraNodes([]);
+      photoFiles=[]; $("aGallery").innerHTML="";
+      if(adminMarker){ adminMap.removeLayer(adminMarker); adminMarker=null; }
+    }
+
+    // ===== render (список + карта)
+    function render(list, drawMarkers=false){
+      const res=$("results"); res.innerHTML="";
+      markersLayer.clearLayers();
+      list.forEach(o=>{
+        const first = (o.photos&&o.photos[0]) || "";
+        const more = Math.max((o.photos?.length||0)-1, 0);
+        const nodesHtml = [o.primaryNode, ...(o.nodes||[])]
+          .filter(Boolean)
+          .map(id=>`<span class="chip">${getNodePathLabel(id)}</span>`).join("");
+
+        const card=document.createElement("div"); card.className="item";
+        card.innerHTML=`
+          <div class="hdr">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:120px;height:90px;border:1px solid var(--b);border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                ${ first ? `<img src="${first}" style="width:100%;height:100%;object-fit:cover">` : `<span class="note">Нет фото</span>` }
+              </div>
+              <div>
+                <div><b>${o.title||"Объявление"}</b></div>
+                <div class="price" style="margin-top:2px">${o.price? o.price+" $" : ""}</div>
+                <div class="note" style="margin-top:4px">${nodesHtml}</div>
+                ${more>0?`<div class="note" style="margin-top:2px">+ ещё ${more} фото</div>`:""}
+              </div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn" onclick="event.stopPropagation(); openModalById('${o.id}')">Открыть</button>
+              <button class="btn" onclick="event.stopPropagation(); editObject('${o.id}')">✏</button>
+              <button class="btn" onclick="event.stopPropagation(); copyObject('${o.id}')">📄</button>
+              <button class="btn btn-danger" onclick="event.stopPropagation(); deleteObject('${o.id}')">🗑</button>
+            </div>
+          </div>
+        `;
+        card.addEventListener("click", ()=> openModal(o));
+        res.appendChild(card);
+
+        if(drawMarkers && o.lat!=null && o.lng!=null){
+          const m=L.marker([o.lat,o.lng]).addTo(markersLayer);
+          m.bindPopup(`<b>${o.title||"Объявление"}</b><br>${o.price?o.price+" $":""}<br>${getNodePathLabel(o.primaryNode)}`);
+        }
+      });
+    }
+    function openModalById(id){ const o=objects.find(x=>x.id===id); if(o) openModal(o); }
+
+    // ===== фильтрация
+    function selectedFilterNodeIds(){
+      return [...document.querySelectorAll("#filterTree .fNode:checked")].map(el=>el.value);
+    }
+    function isObjectMatchNodes(obj, nodeIds){
+      if(!nodeIds.length) return true;
+      const set = new Set([obj.primaryNode, ...(obj.nodes||[])].filter(Boolean));
+      return nodeIds.some(id=> set.has(id)); // логика ANY
+    }
+    function haversine(lat1,lng1,lat2,lng2){
+      const R=6371000,toRad=d=>d*Math.PI/180;
+      const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+      const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+      return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+
+    function applyFilters(){
+      const nodeIds = selectedFilterNodeIds();
+      const priceMin = +($("fPriceMin").value||"") || -Infinity;
+      const priceMax = +($("fPriceMax").value||"") || Infinity;
+      const roomsMin = +($("fRoomsMin").value||"") || -Infinity;
+      const roomsMax = +($("fRoomsMax").value||"") || Infinity;
+      const areaMin  = +($("fAreaMin").value||"")  || -Infinity;
+      const areaMax  = +($("fAreaMax").value||"")  || Infinity;
+      const r        = +($("fRadius").value||0);
+
+      let list = objects.filter(o=> isObjectMatchNodes(o, nodeIds));
+      list = list.filter(o=>{
+        const inPrice=(o.price??Infinity)>=priceMin && (o.price??-Infinity)<=priceMax;
+        const inRooms=(o.rooms??Infinity)>=roomsMin && (o.rooms??-Infinity)<=roomsMax;
+        const inArea =(o.area ??Infinity)>=areaMin  && (o.area ??-Infinity)<=areaMax;
+        return inPrice && inRooms && inArea;
+      });
+
+      if(r>0 && filterCenter){
+        list = list.filter(o=>{
+          if(o.lat==null||o.lng==null) return false;
+          return haversine(o.lat,o.lng, filterCenter.lat, filterCenter.lng) <= r;
+        });
+        drawFilterCircle(filterCenter, r);
+        map.setView(filterCenter, 13);
+      }else{
+        if(filterCircle){ map.removeLayer(filterCircle); filterCircle=null; }
+      }
+
+      render(list, true); // рисуем маркеры для отфильтрованных
+    }
+
+    function resetFilters(){
+      ["fPriceMin","fPriceMax","fRoomsMin","fRoomsMax","fAreaMin","fAreaMax","fRadius"].forEach(id=> $(id).value="");
+      document.querySelectorAll("#filterTree .fNode:checked").forEach(el=> el.checked=false);
+      filterCenter=null;
+      if(filterCircle){ map.removeLayer(filterCircle); filterCircle=null; }
+      markersLayer.clearLayers();
+      render(objects, !$("onlyAfterApply").checked);
+    }
+
+    // ===== init
+    (function init(){
+      // стартовые узлы, если пусто
+      if(!Array.isArray(tree) || tree.length===0){
+        tree = [
+          { id:uid(), label:"Недвижимость", icon:"🏠", children:[
+            { id:uid(), label:"Квартира", icon:"🏢", children:[
+              { id:uid(), label:"Аренда", children:[
+                { id:uid(), label:"Посуточно" },
+                { id:uid(), label:"Долгосрочно" }
+              ]},
+              { id:uid(), label:"Продажа" }
+            ]},
+            { id:uid(), label:"Дом", icon:"🏡", children:[
+              { id:uid(), label:"Аренда" },
+              { id:uid(), label:"Продажа" }
+            ]},
+            { id:uid(), label:"Коммерция", icon:"🏬", children:[
+              { id:uid(), label:"Аренда" },
+              { id:uid(), label:"Продажа" }
+            ]}
+          ]}
+        ];
+        persistTree();
+      }
+
+      applyAuthUI();
+      renderTreeAdmin();
+      renderFilterTree();
+      fillAdminNodeSelectors();
+      render(objects, !$("onlyAfterApply").checked);
+
+      // делегирование удаления фото в админке (кнопки × на миниатюрах)
+      $("aGallery").addEventListener("click",(e)=>{
+        const btn=e.target.closest(".del"); if(!btn) return;
+        const idx=[...$("aGallery").children].indexOf(btn.parentElement);
+        if(idx>-1) photoFiles.splice(idx,1);
+        btn.parentElement.remove();
+      });
+    })();
+  </script>
+</body>
+</html>
