@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Каталог недвижимости — v1.6.0</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b;
+      --border:#e5e7eb; --accent:#2563eb; --danger:#dc2626; --chip:#eef2ff; --chip-b:#e0e7ff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    h1{font-size:26px;margin:8px 0 6px}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .sub{margin:0 0 14px;color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 4px 18px rgba(0,0,0,.04)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .col{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    input,select,textarea,button{font-size:14px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text)}
+    input[type="number"]{width:140px}
+    textarea{resize:vertical;min-height:80px}
+    .btn{cursor:pointer;user-select:none}
+    .btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
+    .btn-ghost{background:#fff}
+    .btn-danger{background:#fff;color:var(--danger);border-color:#fecaca}
+    .hr{height:1px;background:var(--border);border:0;margin:12px 0}
+    .section-title{font-weight:700;margin:6px 0 8px}
+
+    /* Map */
+    #mapMain{width:100%;height:440px;border-radius:12px;border:1px solid var(--border);margin-top:8px}
+    .note{font-size:12px;color:var(--muted);margin-top:4px}
+
+    /* Results */
+    .list{display:grid;gap:10px}
+    .item{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
+    .hdr{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .price{font-weight:800}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .chip{background:var(--chip);border:1px solid var(--chip-b);color:#3730a3;border-radius:999px;padding:2px 8px;font-size:12px}
+    .gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .gallery img{width:100px;height:78px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+
+    /* Mode toggle */
+    .mode{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px}
+    .mode label{display:flex;align-items:center;gap:6px;font-size:13px}
+
+    /* Chips list for districts/sublocs */
+    .chips-list{display:flex;gap:8px;flex-wrap:wrap}
+    .chip-check{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 8px;font-size:13px;background:#fff}
+    .chip-check input{accent-color:var(--accent)}
+
+    /* Admin & dict */
+    .inline{display:flex;gap:8px;flex-wrap:wrap}
+    .kv{display:grid;grid-template-columns:160px 1fr;gap:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Каталог недвижимости v1.6.0</h1>
+    <p class="sub">Поиск по карте или по районам. Метро. Расширенные фильтры. Фото. Telegram.</p>
+
+    <!-- Переключатель режима -->
+    <div class="mode">
+      <label><input type="radio" name="mode" value="map" checked> Поиск по карте</label>
+      <label><input type="radio" name="mode" value="districts"> Поиск по районам</label>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card">
+      <h3>Фильтр</h3>
+      <div class="row">
+        <div class="col">
+          <label>Категория</label>
+          <select id="filterCategory"><option value="">Любая</option></select>
+        </div>
+        <div class="col">
+          <label>Статус</label>
+          <select id="filterStatus"><option value="">Любой</option></select>
+        </div>
+        <div class="col">
+          <label>Тип объявления</label>
+          <select id="filterListingType">
+            <option value="">Любой</option>
+            <option>Частное</option>
+            <option>Риэлтор</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col"><label>Цена от</label><input type="number" id="filterPriceMin"></div>
+        <div class="col"><label>Цена до</label><input type="number" id="filterPriceMax"></div>
+        <div class="col"><label>Площадь от</label><input type="number" id="filterAreaMin"></div>
+        <div class="col"><label>Площадь до</label><input type="number" id="filterAreaMax"></div>
+      </div>
+
+      <div class="row">
+        <div class="col"><label>Комнат от</label><input type="number" id="filterRoomsMin"></div>
+        <div class="col"><label>Комнат до</label><input type="number" id="filterRoomsMax"></div>
+        <div class="col"><label><input type="checkbox" id="filterBasement"> Подвал</label></div>
+        <div class="col"><label><input type="checkbox" id="filterGround"> Цокольный</label></div>
+        <div class="col"><label>Этаж от</label><input type="number" id="filterFloorMin"></div>
+        <div class="col"><label>Этаж до</label><input type="number" id="filterFloorMax"></div>
+      </div>
+
+      <!-- Метро -->
+      <div class="row">
+        <div class="col"><label>Метро</label><select id="filterMetro"><option value="">Любое</option></select></div>
+        <div class="col"><label>Расстояние от метро (м)</label><input type="number" id="filterMetroRadius" placeholder="1000"></div>
+      </div>
+
+      <!-- Блок выбора по районам/саблокам -->
+      <div class="row" id="districtsBlock" style="display:none">
+        <div class="col" style="flex:1">
+          <label>Районы (можно несколько)</label>
+          <div id="filterDistrictList" class="chips-list"></div>
+        </div>
+        <div class="col" style="flex:1">
+          <label>Кварталы / махалли</label>
+          <div id="filterSublocList" class="chips-list"></div>
+        </div>
+      </div>
+
+      <!-- Управление поиском по карте -->
+      <div class="row" id="mapSearchBlock">
+        <div class="col">
+          <label>Радиус поиска по карте (м)</label>
+          <input type="number" id="filterMapRadius" value="1000">
+          <p class="note">Кликни по карте, чтобы задать центр. Радиусом ограничим результаты.</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn btn-primary" onclick="applyFilters()">Применить</button>
+        <button class="btn" onclick="resetFilters()">Сбросить</button>
+      </div>
+    </div>
+
+    <!-- Карта -->
+    <div id="mapMain"></div>
+    <p class="note">Подсказка: обычный клик по карте — центр поиска. Shift+клик — записать координаты в форму добавления объекта.</p>
+
+    <!-- Результаты -->
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <!-- Админка -->
+    <div class="card">
+      <h3>Админка (добавить объект)</h3>
+      <div class="row">
+        <div class="col"><label>Категория</label><select id="addCategory"></select></div>
+        <div class="col"><label>Статус</label><select id="addStatus"></select></div>
+        <div class="col"><label>Тип объявления</label>
+          <select id="addListingType">
+            <option>Частное</option>
+            <option>Риэлтор</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col"><label>Заголовок</label><input id="addTitle"></div>
+        <div class="col"><label>Цена</label><input type="number" id="addPrice"></div>
+        <div class="col"><label>Комнаты</label><input type="number" id="addRooms"></div>
+        <div class="col"><label>Площадь (м²)</label><input type="number" id="addArea"></div>
+      </div>
+
+      <div class="row">
+        <div class="col"><label>Этаж</label>
+          <select id="addFloor">
+            <option value="">---</option>
+            <option>Подвал</option><option>Цокольный</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+            <option>11</option><option>12</option><option>13</option><option>14</option><option>15</option>
+          </select>
+        </div>
+        <div class="col"><label>Район</label><select id="addDistrict"></select></div>
+        <div class="col"><label>Квартал / махалля</label><select id="addSubloc"></select></div>
+      </div>
+
+      <div class="row">
+        <div class="col"><label>Координаты</label>
+          <div class="inline">
+            <input id="addLat" placeholder="lat"><input id="addLng" placeholder="lng">
+          </div>
+          <p class="note">Shift+клик по карте — координаты подставятся сюда.</p>
+        </div>
+        <div class="col"><label>Фото</label><input type="file" id="addPhotos" multiple></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- Динамические поля по типу -->
+      <div class="section-title">Дополнительные параметры</div>
+      <div id="extraFields" class="kv"></div>
+
+      <div class="row"><button class="btn btn-primary" onclick="addObject()">Добавить объект</button></div>
+    </div>
+
+    <!-- Справочник локаций -->
+    <div class="card">
+      <h3>Справочник локаций</h3>
+      <div class="row">
+        <div class="col">
+          <label>Новый район</label>
+          <div class="inline">
+            <input id="dictDistrictName" placeholder="например, Юнусабад">
+            <button class="btn" onclick="addDistrict()">Добавить район</button>
+          </div>
+        </div>
+        <div class="col">
+          <label>Кварталы/махалли выбранного района</label>
+          <div class="inline">
+            <select id="dictDistrictSelect"></select>
+            <input id="dictSublocName" placeholder="например, 9 квартал">
+            <button class="btn" onclick="addSubloc()">Добавить</button>
+          </div>
+          <p class="note">Всё сохраняется в браузере (localStorage). Появится в фильтрах и форме добавления.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script>
+    // ===== ДАННЫЕ =====
+    let objects = JSON.parse(localStorage.getItem("objects")||"[]");
+    const categories = ["Квартира","Дом","Земля","Коммерция","Гараж"];
+    const statuses = ["Аренда","Продажа"];
+
+    // Инициализируем словарь локаций (район -> [саблоки])
+    let locationDict = JSON.parse(localStorage.getItem("locationDict")||"{}");
+    if(Object.keys(locationDict).length===0){
+      locationDict = {
+        "Юнусабад": ["1 квартал","2 квартал","3 квартал","4 квартал","5 квартал","6 квартал","7 квартал","8 квартал","9 квартал","Чорсу","С-5","С-6"],
+        "Чиланзар": ["1 квартал","2 квартал","5 квартал","9 квартал"],
+        "Сергели": ["1 квартал","2 квартал","3 квартал","4 квартал","5 квартал","6 квартал","7 квартал"]
+      };
+      localStorage.setItem("locationDict", JSON.stringify(locationDict));
+    }
+
+    // Пример станций метро (с координатами)
+    const metros = {
+      "Алмазар": {lat:41.3505,lng:69.1989},
+      "Авиасозлар": {lat:41.2829,lng:69.3453},
+      "Минор": {lat:41.3115,lng:69.2797},
+      "Пахтакор": {lat:41.3169,lng:69.2583}
+    };
+
+    // ===== КАРТА =====
+    const map = L.map("mapMain").setView([41.3111,69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+
+    let markersLayer = L.layerGroup().addTo(map);
+    let markerById = {};
+    let searchCenter = null;                // центр поиска по карте
+    let searchCircle = null;                // круг радиуса
+    const mapRadiusInput = document.getElementById("filterMapRadius");
+
+    // Клик по карте: обычный — центр для поиска; с Shift — подставить координаты в форму добавления
+    map.on("click", (e)=>{
+      const {lat, lng} = e.latlng;
+      if (e.originalEvent.shiftKey){
+        document.getElementById("addLat").value = lat.toFixed(6);
+        document.getElementById("addLng").value = lng.toFixed(6);
+      } else {
+        searchCenter = {lat, lng};
+        drawSearchCircle();
+      }
+    });
+
+    function drawSearchCircle(){
+      const r = +mapRadiusInput.value||0;
+      if(searchCircle){ map.removeLayer(searchCircle); searchCircle=null; }
+      if(searchCenter && r>0){
+        searchCircle = L.circle([searchCenter.lat, searchCenter.lng], {radius:r, color:"#2563eb", fillOpacity:0.08});
+        searchCircle.addTo(map);
+        map.panTo([searchCenter.lat,searchCenter.lng]);
+      }
+    }
+    mapRadiusInput?.addEventListener("input", drawSearchCircle);
+
+    // ===== УТИЛИТЫ =====
+    const toRad = d => d*Math.PI/180;
+    function distanceMeters(a,b){
+      if(!a||!b) return Infinity;
+      const R=6371000;
+      const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
+      const A = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+      return 2*R*Math.atan2(Math.sqrt(A),Math.sqrt(1-A));
+    }
+
+    // ===== ОТРИСОВКА ФИЛЬТРОВ =====
+    function renderFilters(){
+      // категории/статусы в фильтре + админке
+      const fc=document.getElementById("filterCategory");
+      const fs=document.getElementById("filterStatus");
+      const ac=document.getElementById("addCategory");
+      const as=document.getElementById("addStatus");
+      fc.innerHTML='<option value="">Любая</option>';
+      fs.innerHTML='<option value="">Любой</option>';
+      ac.innerHTML=''; as.innerHTML='';
+      categories.forEach(c=>{ fc.insertAdjacentHTML("beforeend",`<option>${c}</option>`); ac.insertAdjacentHTML("beforeend",`<option>${c}</option>`); });
+      statuses.forEach(s=>{ fs.insertAdjacentHTML("beforeend",`<option>${s}</option>`); as.insertAdjacentHTML("beforeend",`<option>${s}</option>`); });
+
+      // метро
+      const fm=document.getElementById("filterMetro");
+      fm.innerHTML='<option value="">Любое</option>';
+      Object.keys(metros).forEach(m=> fm.insertAdjacentHTML("beforeend",`<option>${m}</option>`));
+
+      // блок «по районам»
+      renderDistrictFilters();
+
+      // админка — район/саблок
+      fillAddDistrictAndSubloc();
+
+      // справочник — селектор района
+      renderDictPanel();
+
+      // режим
+      bindModeSwitch();
+    }
+
+    function renderDistrictFilters(){
+      const wrapDist=document.getElementById("filterDistrictList");
+      const wrapSub=document.getElementById("filterSublocList");
+      if(!wrapDist||!wrapSub) return;
+      wrapDist.innerHTML=""; wrapSub.innerHTML="";
+      Object.keys(locationDict).forEach(name=>{
+        wrapDist.insertAdjacentHTML("beforeend",
+          `<label class="chip-check"><input type="checkbox" class="fd" value="${name}"> ${name}</label>`);
+      });
+      wrapDist.querySelectorAll(".fd").forEach(cb=> cb.addEventListener("change", updateSublocList));
+    }
+
+    function updateSublocList(){
+      const wrapSub=document.getElementById("filterSublocList");
+      const selected=[...document.querySelectorAll(".fd:checked")].map(e=>e.value);
+      wrapSub.innerHTML="";
+      const set=new Set();
+      selected.forEach(d=> (locationDict[d]||[]).forEach(s=> set.add(s)));
+      [...set].forEach(s=>{
+        wrapSub.insertAdjacentHTML("beforeend",
+          `<label class="chip-check"><input type="checkbox" class="fs" value="${s}"> ${s}</label>`);
+      });
+    }
+
+    function fillAddDistrictAndSubloc(){
+      const selD=document.getElementById("addDistrict");
+      const selS=document.getElementById("addSubloc");
+      selD.innerHTML=""; selS.innerHTML="";
+      Object.keys(locationDict).forEach(d=> selD.insertAdjacentHTML("beforeend",`<option>${d}</option>`));
+      const populate=()=>{
+        selS.innerHTML="";
+        (locationDict[selD.value]||[]).forEach(s=> selS.insertAdjacentHTML("beforeend",`<option>${s}</option>`));
+      };
+      populate();
+      selD.onchange=populate;
+    }
+
+    function renderDictPanel(){
+      const sel=document.getElementById("dictDistrictSelect");
+      sel.innerHTML="";
+      Object.keys(locationDict).forEach(d=> sel.insertAdjacentHTML("beforeend",`<option>${d}</option>`));
+    }
+
+    // Режимы: карта / районы
+    function bindModeSwitch(){
+      const radios=[...document.querySelectorAll('input[name="mode"]')];
+      const districtsBlock=document.getElementById("districtsBlock");
+      const mapBlock=document.getElementById("mapSearchBlock");
+      function sync(){
+        const v=radios.find(r=>r.checked)?.value;
+        if(v==="districts"){ districtsBlock.style.display=""; mapBlock.style.display="none"; }
+        else { districtsBlock.style.display="none"; mapBlock.style.display=""; }
+      }
+      radios.forEach(r=> r.addEventListener("change", sync));
+      sync();
+    }
+    // ===== РЕНДЕР МАРКЕРОВ И РЕЗУЛЬТАТОВ =====
+    function renderMarkers(list){
+      markersLayer.clearLayers();
+      markerById = {};
+      list.forEach(o=>{
+        if(o.lat!=null && o.lng!=null){
+          const m=L.marker([o.lat,o.lng]).addTo(markersLayer);
+          const url = location.origin + location.pathname + "?id=" + o.id;
+          const photo = o.photos?.[0] ? `<img src="${o.photos[0]}" style="width:120px;height:90px;object-fit:cover;border-radius:6px;margin-top:6px">` : "";
+          m.bindPopup(`
+            <b>${o.title}</b><br>
+            ${o.price? (o.price+" $ • "):""}${o.area? (o.area+" м² • "):""}${o.rooms? (o.rooms+" комн • "):""}этаж: ${o.floor||"-"}<br>
+            <small>${o.category}, ${o.status}, ${o.listingType||"—"}, ${o.district}${o.subloc?(", "+o.subloc):""}</small><br>
+            <a href="https://t.me/smeksy?text=${encodeURIComponent("Здравствуйте, интересует объявление: "+url)}" target="_blank">Написать в Telegram</a>
+            ${photo}
+          `);
+          markerById[o.id]=m;
+        }
+      });
+    }
+
+    function renderResults(list){
+      const res=document.getElementById("results");
+      res.innerHTML="";
+      list.forEach(o=>{
+        const chips=(o.features||[]).map(f=>`<span class="chip">${f}</span>`).join("");
+        const photos=o.photos?.map(p=>`<img src="${p}">`).join("")||"";
+        const url = location.origin + location.pathname + "?id=" + o.id;
+        res.insertAdjacentHTML("beforeend",`
+          <div class="item" data-id="${o.id}">
+            <div class="hdr">
+              <b>${o.title}</b>
+              <span class="price">${o.price? o.price+" $" : ""}</span>
+            </div>
+            <div>${o.category}, ${o.status}, ${o.listingType||"—"}</div>
+            <div>${o.district}${o.subloc?(", "+o.subloc):""}</div>
+            <div>${o.rooms||"-"} комн • ${o.area||"-"} м² • этаж: ${o.floor||"-"}</div>
+            <div class="chips">${chips}</div>
+            <div class="gallery">${photos}</div>
+            <div class="inline">
+              <a target="_blank" href="${url}">Открыть</a>
+              <a target="_blank" href="https://t.me/smeksy?text=${encodeURIComponent("Здравствуйте, интересует объявление: "+url)}">Написать в Telegram</a>
+            </div>
+          </div>
+        `);
+      });
+
+      // Клик по карточке — подсветить маркер и центрировать карту
+      res.querySelectorAll(".item").forEach(el=>{
+        el.addEventListener("click", ()=>{
+          const id=el.getAttribute("data-id");
+          const o=objects.find(x=>x.id===id);
+          if(o?.lat!=null && o?.lng!=null) map.setView([o.lat,o.lng], 15);
+          markerById[id]?.openPopup();
+        });
+      });
+
+      renderMarkers(list);
+    }
+
+    // ===== ФИЛЬТРАЦИЯ =====
+    function applyFilters(){
+      const mode = [...document.querySelectorAll('input[name="mode"]')].find(r=>r.checked)?.value || "map";
+      const fCat = document.getElementById("filterCategory").value;
+      const fStat = document.getElementById("filterStatus").value;
+      const fLType = document.getElementById("filterListingType").value;
+      const pMin = +document.getElementById("filterPriceMin").value || 0;
+      const pMax = +document.getElementById("filterPriceMax").value || Infinity;
+      const aMin = +document.getElementById("filterAreaMin").value || 0;
+      const aMax = +document.getElementById("filterAreaMax").value || Infinity;
+      const rMin = +document.getElementById("filterRoomsMin").value || 0;
+      const rMax = +document.getElementById("filterRoomsMax").value || Infinity;
+      const fBas = document.getElementById("filterBasement").checked;
+      const fGnd = document.getElementById("filterGround").checked;
+      const fFlMin = +document.getElementById("filterFloorMin").value || 0;
+      const fFlMax = +document.getElementById("filterFloorMax").value || Infinity;
+
+      const metroName = document.getElementById("filterMetro").value;
+      const metroRadius = +document.getElementById("filterMetroRadius").value || Infinity;
+      const metroPoint = metroName ? metros[metroName] : null;
+
+      const selectedD = [...document.querySelectorAll(".fd:checked")].map(e=>e.value);
+      const selectedS = [...document.querySelectorAll(".fs:checked")].map(e=>e.value);
+
+      const mapRadius = +document.getElementById("filterMapRadius").value || 0;
+
+      const filtered = objects.filter(o=>{
+        // Базовые поля
+        if (fCat && o.category!==fCat) return false;
+        if (fStat && o.status!==fStat) return false;
+        if (fLType && o.listingType!==fLType) return false;
+
+        if (o.price!=null && (o.price<pMin || o.price>pMax)) return false;
+        if (o.area!=null && (o.area<aMin || o.area>aMax)) return false;
+        if (o.rooms!=null && (o.rooms<rMin || o.rooms>rMax)) return false;
+
+        // Этажи: спец-варианты и диапазон
+        if (fBas && o.floor!=="Подвал") return false;
+        if (fGnd && o.floor!=="Цокольный") return false;
+        if (!fBas && !fGnd) {
+          // фильтр по числовому этажу, если указан
+          const num = parseInt(o.floor);
+          if (!isNaN(num)) {
+            if (num < fFlMin || num > fFlMax) return false;
+          }
+        }
+
+        // Районы/саблоки (в режиме по районам)
+        if (mode==="districts"){
+          if (selectedD.length && !selectedD.includes(o.district)) return false;
+          if (selectedS.length && (!o.subloc || !selectedS.includes(o.subloc))) return false;
+        }
+
+        // Метро (если выбрано)
+        if (metroPoint && o.lat!=null && o.lng!=null){
+          if (distanceMeters({lat:o.lat,lng:o.lng}, metroPoint) > metroRadius) return false;
+        }
+
+        // Поиск по карте с радиусом
+        if (mode==="map" && searchCenter && mapRadius>0){
+          if (o.lat==null || o.lng==null) return false;
+          if (distanceMeters({lat:o.lat,lng:o.lng}, searchCenter) > mapRadius) return false;
+        }
+
+        return true;
+      });
+
+      renderResults(filtered);
+      // если выбран Metro или Map и есть центр — подсветим круг заново
+      drawSearchCircle();
+    }
+
+    function resetFilters(){
+      document.querySelectorAll('#filterCategory,#filterStatus,#filterListingType,#filterPriceMin,#filterPriceMax,#filterAreaMin,#filterAreaMax,#filterRoomsMin,#filterRoomsMax,#filterFloorMin,#filterFloorMax,#filterMetro,#filterMetroRadius,#filterMapRadius').forEach(el=>el.value="");
+      document.getElementById("filterBasement").checked=false;
+      document.getElementById("filterGround").checked=false;
+      document.querySelectorAll(".fd,.fs").forEach(cb=> cb.checked=false);
+      // карта: сброс центра и круга
+      searchCenter=null;
+      if(searchCircle){ map.removeLayer(searchCircle); searchCircle=null; }
+      renderResults(objects);
+    }
+
+    // ===== ДОП. ПОЛЯ ПО КАТЕГОРИИ В АДМИНКЕ =====
+    document.getElementById("addCategory").addEventListener("change", renderExtraFields);
+    function renderExtraFields(){
+      const cat=document.getElementById("addCategory").value;
+      const box=document.getElementById("extraFields");
+      box.innerHTML="";
+      if(cat==="Квартира"){
+        box.innerHTML = `
+          <b>Состояние</b><select id="addCondition">
+            <option>Черновая</option><option>Средний ремонт</option><option>Евроремонт</option>
+          </select>
+          <b>Удобства</b>
+          <label><input type="checkbox" class="feature" value="Кондиционер"> Кондиционер</label>
+          <label><input type="checkbox" class="feature" value="Холодильник"> Холодильник</label>
+          <label><input type="checkbox" class="feature" value="Мебель"> Мебель</label>
+          <label><input type="checkbox" class="feature" value="Стиралка"> Стиралка</label>
+        `;
+      } else if(cat==="Дом"){
+        box.innerHTML = `
+          <b>Этажность</b><input type="number" id="addFloorsCount" min="1" placeholder="например, 2">
+          <b>Материал</b><select id="addMaterial">
+            <option>Кирпич</option><option>Панель</option><option>Монолит</option>
+          </select>
+          <b>Опции</b>
+          <label><input type="checkbox" class="feature" value="Гараж"> Гараж</label>
+          <label><input type="checkbox" class="feature" value="Отопление"> Отопление</label>
+          <label><input type="checkbox" class="feature" value="Бассейн"> Бассейн</label>
+        `;
+      } else if(cat==="Коммерция"){
+        box.innerHTML = `
+          <b>Тип</b>
+          <label><input type="checkbox" class="feature" value="Офис"> Офис</label>
+          <label><input type="checkbox" class="feature" value="Магазин"> Магазин</label>
+          <label><input type="checkbox" class="feature" value="Ресторан"> Ресторан</label>
+        `;
+      }
+    }
+
+    // ===== СПРАВОЧНИК ЛОКАЦИЙ (админка) =====
+    function addDistrict(){
+      const name=document.getElementById("dictDistrictName").value.trim();
+      if(!name) return alert("Введите название района");
+      if(locationDict[name]) return alert("Такой район уже существует");
+      locationDict[name]=[];
+      localStorage.setItem("locationDict", JSON.stringify(locationDict));
+      document.getElementById("dictDistrictName").value="";
+      renderFilters();
+    }
+
+    function addSubloc(){
+      const sel=document.getElementById("dictDistrictSelect");
+      const sname=document.getElementById("dictSublocName").value.trim();
+      if(!sel.value || !sname) return alert("Выберите район и введите квартал/махаллю");
+      if(!locationDict[sel.value]) locationDict[sel.value]=[];
+      if(!locationDict[sel.value].includes(sname)) locationDict[sel.value].push(sname);
+      localStorage.setItem("locationDict", JSON.stringify(locationDict));
+      document.getElementById("dictSublocName").value="";
+      renderFilters();
+    }
+
+    // ===== ДОБАВЛЕНИЕ ОБЪЕКТА =====
+    function addObject(){
+      const title = document.getElementById("addTitle").value.trim();
+      const category = document.getElementById("addCategory").value;
+      const status = document.getElementById("addStatus").value;
+      const listingType = document.getElementById("addListingType").value;
+      const district = document.getElementById("addDistrict").value;
+      const subloc = document.getElementById("addSubloc").value || null;
+
+      if(!title || !category || !status || !district){
+        alert("Обязательные поля: Заголовок, Категория, Статус, Район");
+        return;
+      }
+
+      const price = +document.getElementById("addPrice").value || null;
+      const rooms = +document.getElementById("addRooms").value || null;
+      const area = +document.getElementById("addArea").value || null;
+      const floor = document.getElementById("addFloor").value || null;
+
+      const lat = parseFloat(document.getElementById("addLat").value) || null;
+      const lng = parseFloat(document.getElementById("addLng").value) || null;
+
+      // Доп-поля
+      const condition = document.getElementById("addCondition")?.value || null;
+      const floorsCount = +document.getElementById("addFloorsCount")?.value || null;
+      const material = document.getElementById("addMaterial")?.value || null;
+      const features = [...document.querySelectorAll("#extraFields .feature:checked")].map(c=>c.value);
+
+      // Фото
+      const files = document.getElementById("addPhotos").files;
+      const photos = [];
+      if(files.length){
+        let done=0;
+        for(const f of files){
+          const r=new FileReader();
+          r.onload = e => {
+            photos.push(e.target.result); done++;
+            if(done===files.length) finish();
+          };
+          r.readAsDataURL(f);
+        }
+      } else finish();
+
+      function finish(){
+        const id = Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+        const obj = {id,title,category,status,listingType,district,subloc,price,rooms,area,floor,lat,lng,features,condition,floorsCount,material,photos};
+        objects.push(obj);
+        localStorage.setItem("objects", JSON.stringify(objects));
+        renderResults(objects);
+      }
+    }
+
+    // ===== INIT =====
+    renderFilters();
+    renderResults(objects);
+
+    // deeplink: ?id=...
+    const qs = new URLSearchParams(location.search);
+    const openId = qs.get("id");
+    if(openId){
+      const o = objects.find(x=>x.id===openId);
+      if(o){
+        if(o.lat!=null && o.lng!=null){ map.setView([o.lat,o.lng], 15); }
+        requestAnimationFrame(()=> markerById[openId]?.openPopup());
+        const el = document.querySelector(`[data-id="${openId}"]`);
+        if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+      }
+    }
+  </script>
+</body>
+</html>
