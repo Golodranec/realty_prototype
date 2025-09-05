@@ -162,8 +162,8 @@ window.onload = () => {
     initMap();
     renderResults(objects);
 
-    // фикс для карты (чтобы тайлы не разъезжались)
-    setTimeout(() => {
+    // фикс карты — ждём полной готовности
+    map.whenReady(() => {
         map.invalidateSize();
-    }, 200);
+    });
 };
