@@ -75,15 +75,44 @@ button:hover {
 #resultsList .result-card {
   border-bottom: 1px solid #ddd;
   padding: 10px 0;
+  margin-bottom: 15px;
 }
 
-#resultsList img {
-  border-radius: 4px;
+#resultsList .result-card h3 {
+  margin: 0 0 5px 0;
+}
+
+#resultsList .result-card p {
+  margin: 5px 0;
+}
+
+/* Слайдер фото */
+.photo-slider {
+  position: relative;
+  width: 200px;
+  height: 150px;
+  margin: 10px 0;
+}
+
+.photo-slider img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  border-radius: 6px;
 }
 
-/* Галерея фото */
-.photo-gallery {
-  display: flex;
-  flex-wrap: wrap;
+.slider-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 14px;
 }
+
+.slider-btn.prev { left: 5px; }
+.slider-btn.next { right: 5px; }
