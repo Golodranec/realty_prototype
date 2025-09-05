@@ -261,6 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 img.style.height = "75px";
                 img.style.objectFit = "cover";
                 img.style.borderRadius = "6px";
+                img.style.boxShadow = "0 1px 4px rgba(0,0,0,0.2)";
                 preview.appendChild(img);
             };
             reader.readAsDataURL(files[i]);
