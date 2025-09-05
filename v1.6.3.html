@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Каталог недвижимости — v1.6.3</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b;
+      --border:#e5e7eb; --accent:#2563eb; --danger:#dc2626;
+      --chip:#eef2ff; --chip-b:#e0e7ff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    h1{font-size:26px;margin:8px 0 6px}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .sub{margin:0 0 14px;color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--border);
+      border-radius:14px;padding:14px;margin:10px 0;
+      box-shadow:0 4px 18px rgba(0,0,0,.04)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .col{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    input,select,textarea,button{font-size:14px;padding:10px;
+      border:1px solid var(--border);border-radius:10px;
+      background:#fff;color:var(--text)}
+    input[type="number"]{width:140px}
+    textarea{resize:vertical;min-height:80px}
+    .btn{cursor:pointer;user-select:none}
+    .btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
+    .btn-ghost{background:#fff}
+    .btn-danger{background:#fff;color:var(--danger);border-color:#fecaca}
+    .hr{height:1px;background:var(--border);border:0;margin:12px 0}
+    .section-title{font-weight:700;margin:6px 0 8px}
+
+    /* Map */
+    #mapMain{width:100%;height:440px;border-radius:12px;border:1px solid var(--border);margin-top:8px}
+    .note{font-size:12px;color:var(--muted);margin-top:4px}
+
+    /* Results */
+    .list{display:grid;gap:10px}
+    .item{background:#fff;border:1px solid var(--border);
+      border-radius:12px;padding:12px}
+    .hdr{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .price{font-weight:800}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .chip{background:var(--chip);border:1px solid var(--chip-b);color:#3730a3;
+      border-radius:999px;padding:2px 8px;font-size:12px}
+    .gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .gallery img{width:100px;height:78px;object-fit:cover;border-radius:8px;border:1px solid var(--border);position:relative}
+    .gallery .thumb{position:relative}
+    .gallery .del{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px}
+
+    /* Mode toggle */
+    .mode{display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+      background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px}
+    .mode label{display:flex;align-items:center;gap:6px;font-size:13px}
+
+    /* Chips list */
+    .chips-list{display:flex;gap:8px;flex-wrap:wrap}
+    .chip-check{display:inline-flex;align-items:center;gap:6px;
+      border:1px solid var(--border);border-radius:999px;
+      padding:4px 8px;font-size:13px;background:#fff}
+    .chip-check input{accent-color:var(--accent)}
+
+    /* Admin & dict */
+    .inline{display:flex;gap:8px;flex-wrap:wrap}
+    .kv{display:grid;grid-template-columns:160px 1fr;gap:6px}
+
+    /* Mini-map in admin */
+    #adminMap{height:200px;border:1px solid var(--border);border-radius:8px;margin-top:6px}
+
+    /* Login modal */
+    #loginModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+    #loginModal .card{max-width:360px;width:100%}
+  </style>
+</head>
+<body>
+  <div id="loginModal" style="display:none">
+    <div class="card">
+      <h3>Вход в админку</h3>
+      <div class="col"><label>Логин</label><input id="loginUser"></div>
+      <div class="col"><label>Пароль</label><input type="password" id="loginPass"></div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="login()">Войти</button>
+        <button class="btn" onclick="document.getElementById('loginModal').style.display='none'">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h1>Каталог недвижимости v1.6.3</h1>
+    <p class="sub">Редактирование + удаление + фото предпросмотр + состояния квартиры</p>
+
+    <!-- Переключатель режима -->
+    <div class="mode">
+      <label><input type="radio" name="mode" value="map" checked> Поиск по карте</label>
+      <label><input type="radio" name="mode" value="districts"> Поиск по районам</label>
+      <button class="btn btn-primary" style="margin-left:auto" onclick="showLogin()">Войти в админку</button>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card" id="filtersCard">
+      <div class="row">
+        <div class="col">
+          <label>Категория</label>
+          <select id="filterCategory"><option value="">Любая</option></select>
+        </div>
+        <div class="col">
+          <label>Статус</label>
+          <select id="filterStatus"><option value="">Любой</option></select>
+        </div>
+        <div class="col">
+          <label>Тип объявления</label>
+          <select id="filterListingType">
+            <option value="">Любой</option>
+            <option>Частное</option>
+            <option>Риэлтор</option>
+          </select>
+        </div>
+        <div class="col">
+          <label>Состояние</label>
+          <select id="filterCondition">
+            <option value="">Любое</option>
+            <option>Без ремонта (черновая)</option>
+            <option>Косметический</option>
+            <option>Средний ремонт</option>
+            <option>Капитальный ремонт</option>
+            <option>Евроремонт</option>
+            <option>Дизайнерский</option>
+          </select>
+        </div>
+      </div>
+      <!-- остальные фильтры как раньше -->
+    </div>
+
+    <!-- Карта -->
+    <div id="mapMain"></div>
+
+    <!-- Результаты -->
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <!-- Админка -->
+    <div class="card" id="adminCard" style="display:none">
+      <h3>Админка (добавить/редактировать объект)</h3>
+      <div class="row">
+        <div class="col"><label>Категория</label><select id="addCategory"></select></div>
+        <div class="col"><label>Статус</label><select id="addStatus"></select></div>
+        <div class="col"><label>Тип объявления</label>
+          <select id="addListingType"><option>Частное</option><option>Риэлтор</option></select>
+        </div>
+        <div class="col"><label>Состояние</label>
+          <select id="addCondition">
+            <option>Без ремонта (черновая)</option>
+            <option>Косметический</option>
+            <option>Средний ремонт</option>
+            <option>Капитальный ремонт</option>
+            <option>Евроремонт</option>
+            <option>Дизайнерский</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col" style="flex:1"><label>Заголовок</label><input id="addTitle"></div>
+        <div class="col"><label>Цена</label><input type="number" id="addPrice"></div>
+        <div class="col"><label>Комнаты</label><input type="number" id="addRooms"></div>
+        <div class="col"><label>Площадь м²</label><input type="number" id="addArea"></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Этаж</label><input id="addFloor"></div>
+        <div class="col"><label>Район</label><input id="addDistrict"></div>
+        <div class="col"><label>Местоположение</label><input id="addSubloc"></div>
+        <div class="col"><label>Lat</label><input id="addLat"></div>
+        <div class="col"><label>Lng</label><input id="addLng"></div>
+      </div>
+      <div class="row">
+        <div class="col" style="flex:1">
+          <label>Фото</label>
+          <input type="file" id="addPhotos" multiple>
+          <div id="photoPreview" class="gallery"></div>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="addObject()">Сохранить</button>
+        <button class="btn" onclick="resetForm()">Очистить</button>
+      </div>
+    </div>
+  </div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script>
+    let objects = JSON.parse(localStorage.getItem("objects")||"[]");
+    const categories = ["Квартира","Дом","Земля","Коммерция","Гараж"];
+    const statuses = ["Аренда","Продажа"];
+
+    const adminUser="admin", adminPass="1234";
+    let logged=false, editId=null;
+
+    function showLogin(){ document.getElementById("loginModal").style.display="flex"; }
+    function login(){
+      const u=document.getElementById("loginUser").value;
+      const p=document.getElementById("loginPass").value;
+      if(u===adminUser && p===adminPass){
+        logged=true;
+        document.getElementById("loginModal").style.display="none";
+        document.getElementById("adminCard").style.display="";
+      } else alert("Неверные данные");
+    }
+
+    // photo preview
+    const addPhotos=document.getElementById("addPhotos");
+    addPhotos?.addEventListener("change", ()=>{
+      const box=document.getElementById("photoPreview");
+      box.innerHTML="";
+      [...addPhotos.files].forEach((f,i)=>{
+        const r=new FileReader();
+        r.onload=e=>{
+          const d=document.createElement("div");d.className="thumb";
+          d.innerHTML=`<img src="${e.target.result}"><button class="del" onclick="removePhoto(${i})">×</button>`;
+          box.appendChild(d);
+        };
+        r.readAsDataURL(f);
+      });
+    });
+    function removePhoto(i){
+      const dt=new DataTransfer();
+      [...addPhotos.files].forEach((f,idx)=>{ if(idx!==i) dt.items.add(f); });
+      addPhotos.files=dt.files;
+      addPhotos.dispatchEvent(new Event("change"));
+    }
+    // add / edit
+    function addObject(){
+      const title=document.getElementById("addTitle").value.trim();
+      if(!title){alert("Заголовок обязателен");return;}
+      const obj={id:editId||Date.now().toString(36),
+        title,
+        category:document.getElementById("addCategory").value,
+        status:document.getElementById("addStatus").value,
+        listingType:document.getElementById("addListingType").value,
+        condition:document.getElementById("addCondition").value,
+        price:+document.getElementById("addPrice").value||null,
+        rooms:+document.getElementById("addRooms").value||null,
+        area:+document.getElementById("addArea").value||null,
+        floor:document.getElementById("addFloor").value,
+        district:document.getElementById("addDistrict").value,
+        subloc:document.getElementById("addSubloc").value,
+        lat:+document.getElementById("addLat").value||null,
+        lng:+document.getElementById("addLng").value||null,
+        photos:[]
+      };
+      [...document.querySelectorAll("#photoPreview img")].forEach(img=> obj.photos.push(img.src));
+      if(editId){
+        const idx=objects.findIndex(o=>o.id===editId);
+        objects[idx]=obj; editId=null;
+      } else objects.push(obj);
+      localStorage.setItem("objects",JSON.stringify(objects));
+      renderResults(objects);
+      resetForm();
+    }
+
+    function resetForm(){
+      document.querySelectorAll("#adminCard input,#adminCard select").forEach(el=>el.value="");
+      document.getElementById("photoPreview").innerHTML="";
+      editId=null;
+    }
+
+    function editObject(id){
+      const o=objects.find(x=>x.id===id);
+      if(!o) return;
+      editId=id;
+      document.getElementById("addTitle").value=o.title;
+      document.getElementById("addCategory").value=o.category;
+      document.getElementById("addStatus").value=o.status;
+      document.getElementById("addListingType").value=o.listingType;
+      document.getElementById("addCondition").value=o.condition;
+      document.getElementById("addPrice").value=o.price||"";
+      document.getElementById("addRooms").value=o.rooms||"";
+      document.getElementById("addArea").value=o.area||"";
+      document.getElementById("addFloor").value=o.floor||"";
+      document.getElementById("addDistrict").value=o.district;
+      document.getElementById("addSubloc").value=o.subloc;
+      document.getElementById("addLat").value=o.lat||"";
+      document.getElementById("addLng").value=o.lng||"";
+      const box=document.getElementById("photoPreview");
+      box.innerHTML="";
+      (o.photos||[]).forEach((p,i)=>{
+        const d=document.createElement("div");d.className="thumb";
+        d.innerHTML=`<img src="${p}"><button class="del" onclick="removePhoto(${i})">×</button>`;
+        box.appendChild(d);
+      });
+      document.getElementById("adminCard").scrollIntoView({behavior:"smooth"});
+    }
+
+    function deleteObject(id){
+      if(!confirm("Удалить объект?")) return;
+      objects=objects.filter(o=>o.id!==id);
+      localStorage.setItem("objects",JSON.stringify(objects));
+      renderResults(objects);
+    }
+
+    // render
+    function renderResults(list){
+      const res=document.getElementById("results");res.innerHTML="";
+      list.forEach(o=>{
+        const photos=o.photos?.map(p=>`<img src="${p}">`).join("")||"";
+        res.insertAdjacentHTML("beforeend",`
+          <div class="item" data-id="${o.id}">
+            <div class="hdr"><b>${o.title}</b><span class="price">${o.price||""} $</span></div>
+            <div>${o.category}, ${o.status}, ${o.listingType}</div>
+            <div>Состояние: ${o.condition||"-"}</div>
+            <div>${o.district}${o.subloc?(", "+o.subloc):""}</div>
+            <div>${o.rooms||"-"} комн • ${o.area||"-"} м² • этаж ${o.floor||"-"}</div>
+            <div class="gallery">${photos}</div>
+            <div class="inline">
+              <button class="btn" onclick="editObject('${o.id}')">✏️ Редактировать</button>
+              <button class="btn btn-danger" onclick="deleteObject('${o.id}')">🗑 Удалить</button>
+            </div>
+          </div>
+        `);
+      });
+    }
+
+    // фильтрация по состоянию
+    function applyFilters(){
+      const cond=document.getElementById("filterCondition").value;
+      let list=objects;
+      if(cond) list=list.filter(o=>o.condition===cond);
+      renderResults(list);
+    }
+
+    renderResults(objects);
+  </script>
+</body>
+</html>
