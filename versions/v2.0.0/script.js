@@ -212,7 +212,6 @@ function addObject() {
         return;
     }
 
-    // читаем все фото
     let readers = [];
     for (let i = 0; i < files.length; i++) {
         readers.push(new Promise((resolve) => {
