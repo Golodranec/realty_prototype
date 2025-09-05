@@ -1,4 +1,4 @@
-alert("✅ script.js v4 загружен");
+alert("✅ script.js v5 загружен");
 
 let objects = [];
 let map;
@@ -62,7 +62,13 @@ function renderMarkers(filteredObjects) {
         `;
 
         if (obj.photos && obj.photos.length > 0) {
-            popupContent += `<img src="${obj.photos[0]}" class="popup-photo"><br>`;
+            popupContent += `
+              <div class="photo-slider" data-index="0" id="popup-slider-${index}">
+                <img src="${obj.photos[0]}" class="slider-img">
+                <button class="slider-btn prev" onclick="changePopupSlide(${index}, -1)">◀</button>
+                <button class="slider-btn next" onclick="changePopupSlide(${index}, 1)">▶</button>
+              </div>
+            `;
         }
 
         if (obj.contact) {
@@ -74,6 +80,18 @@ function renderMarkers(filteredObjects) {
         marker.bindPopup(popupContent);
         markers.push(marker);
     });
+}
+
+// ===== Переключение слайдов в попапе =====
+function changePopupSlide(idx, direction) {
+    const slider = document.getElementById(`popup-slider-${idx}`);
+    if (!slider) return;
+
+    let index = parseInt(slider.dataset.index);
+    const photos = objects[idx].photos;
+    index = (index + direction + photos.length) % photos.length;
+    slider.dataset.index = index;
+    slider.querySelector(".slider-img").src = photos[index];
 }
 
 // ===== Скролл к карточке =====
@@ -178,7 +196,7 @@ function renderResults(list) {
     });
 }
 
-// ===== Переключение слайдов =====
+// ===== Переключение слайдов в карточке =====
 function changeSlide(slider, photos, direction) {
     let index = parseInt(slider.dataset.index);
     index = (index + direction + photos.length) % photos.length;
@@ -222,12 +240,13 @@ function addObject() {
     }
 
     Promise.all(readers).then((photosBase64) => {
-        console.log("📸 Загружено фото:", photosBase64.length);
+        console.log("📸 Сохраняем объект с фото:", photosBase64.length);
         saveNewObject({ title, price, rooms, area, category, status, contact, lat, lng, photos: photosBase64 });
     });
 }
 
 function saveNewObject(obj) {
+    console.log("✅ Новый объект сохранён:", obj);
     objects.push(obj);
     saveObjects();
 
