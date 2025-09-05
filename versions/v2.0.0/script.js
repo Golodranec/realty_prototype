@@ -30,7 +30,6 @@ function initMap() {
         document.getElementById("lat").value = lat;
         document.getElementById("lng").value = lng;
 
-        // временный маркер
         if (tempMarker) {
             tempMarker.setLatLng([lat, lng]);
         } else {
@@ -197,7 +196,6 @@ function addObject() {
     const lat = parseFloat(document.getElementById("lat").value) || null;
     const lng = parseFloat(document.getElementById("lng").value) || null;
 
-    // автоссылка для Telegram
     if (contact.startsWith("@")) {
         contact = "https://t.me/" + contact.slice(1);
     } else if (contact.startsWith("t.me/")) {
@@ -212,20 +210,18 @@ function addObject() {
         return;
     }
 
-    let photosBase64 = [];
-    let loadedCount = 0;
-
+    let readers = [];
     for (let i = 0; i < files.length; i++) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            photosBase64.push(e.target.result);
-            loadedCount++;
-            if (loadedCount === files.length) {
-                saveNewObject({ title, price, rooms, area, category, status, contact, lat, lng, photos: photosBase64 });
-            }
-        };
-        reader.readAsDataURL(files[i]);
+        readers.push(new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(files[i]);
+        }));
     }
+
+    Promise.all(readers).then((photosBase64) => {
+        saveNewObject({ title, price, rooms, area, category, status, contact, lat, lng, photos: photosBase64 });
+    });
 }
 
 function saveNewObject(obj) {
@@ -241,7 +237,7 @@ function saveNewObject(obj) {
     }
 
     document.getElementById("addForm").reset();
-    document.getElementById("preview").innerHTML = ""; // очищаем превью
+    document.getElementById("preview").innerHTML = "";
 }
 
 // ===== Превью фото в форме =====
@@ -255,6 +251,10 @@ function previewPhotos(event) {
         reader.onload = function(e) {
             let img = document.createElement("img");
             img.src = e.target.result;
+            img.width = 80;
+            img.height = 60;
+            img.style.objectFit = "cover";
+            img.style.margin = "5px";
             previewDiv.appendChild(img);
         };
         reader.readAsDataURL(files[i]);
