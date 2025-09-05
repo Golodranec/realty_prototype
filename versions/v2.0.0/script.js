@@ -30,7 +30,6 @@ function initMap() {
         document.getElementById("lat").value = lat;
         document.getElementById("lng").value = lng;
 
-        // временный маркер
         if (tempMarker) {
             tempMarker.setLatLng([lat, lng]);
         } else {
@@ -241,7 +240,33 @@ function saveNewObject(obj) {
     }
 
     document.getElementById("addForm").reset();
+    document.getElementById("preview").innerHTML = "";
 }
+
+// ===== Превью фото до добавления =====
+document.addEventListener("DOMContentLoaded", () => {
+    const fileInput = document.getElementById("photo");
+    const preview = document.getElementById("preview");
+
+    fileInput.addEventListener("change", () => {
+        preview.innerHTML = "";
+        const files = fileInput.files;
+
+        for (let i = 0; i < files.length; i++) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = document.createElement("img");
+                img.src = e.target.result;
+                img.style.width = "100px";
+                img.style.height = "75px";
+                img.style.objectFit = "cover";
+                img.style.borderRadius = "6px";
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(files[i]);
+        }
+    });
+});
 
 // ===== Запуск =====
 window.onload = () => {
