@@ -1,137 +1,154 @@
-// Хранилище объектов
+// Массив для хранения объектов
 let objects = [];
 let map;
-let currentMarkers = [];
+let markers = [];
 
 // Инициализация карты
 function initMap() {
-  map = L.map('map').setView([41.3111, 69.2797], 12); // Центр Ташкента
+    map = L.map("map").setView([41.3111, 69.2797], 12); // центр Ташкента
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  renderMarkers(objects);
+    // Клик по карте для выбора координат при добавлении объекта
+    map.on("click", function (e) {
+        const lat = e.latlng.lat.toFixed(6);
+        const lng = e.latlng.lng.toFixed(6);
+        document.getElementById("lat").value = lat;
+        document.getElementById("lng").value = lng;
+    });
 }
 
-// Рендер маркеров на карте
-function renderMarkers(data) {
-  // очистить старые маркеры
-  currentMarkers.forEach(m => map.removeLayer(m));
-  currentMarkers = [];
+// Рендер объектов на карте
+function renderMarkers(filteredObjects) {
+    // Очистка старых маркеров
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
 
-  data.forEach(obj => {
-    const marker = L.marker([obj.lat, obj.lng]).addTo(map);
-    let popupHtml = `<b>${obj.title}</b><br>${obj.price} $<br>${obj.rooms} комн.<br>`;
-    if (obj.photos && obj.photos.length > 0) {
-      popupHtml += `<img src="${obj.photos[0]}" width="150" style="margin-top:5px;border-radius:4px;">`;
+    filteredObjects.forEach(obj => {
+        if (!obj.lat || !obj.lng) return;
+
+        const marker = L.marker([obj.lat, obj.lng]).addTo(map);
+
+        // Всплывающая карточка
+        let popupContent = `
+            <b>${obj.title}</b><br>
+            ${obj.price} у.е. · ${obj.rooms} комн. · ${obj.area} м²<br>
+            <i>${obj.category}, ${obj.status}</i><br>
+        `;
+
+        if (obj.photo) {
+            popupContent += `<img src="${obj.photo}" width="150"><br>`;
+        }
+
+        if (obj.contact) {
+            popupContent += `<a href="${obj.contact}" target="_blank">Связаться</a>`;
+        }
+
+        marker.bindPopup(popupContent);
+        markers.push(marker);
+    });
+}
+
+// Применение фильтра
+function applyFilter() {
+    const category = document.getElementById("filterCategory").value;
+    const status = document.getElementById("filterStatus").value;
+    const priceFrom = parseFloat(document.getElementById("priceFrom").value) || 0;
+    const priceTo = parseFloat(document.getElementById("priceTo").value) || Infinity;
+    const roomsFrom = parseInt(document.getElementById("roomsFrom").value) || 0;
+    const roomsTo = parseInt(document.getElementById("roomsTo").value) || Infinity;
+
+    const filtered = objects.filter(obj => {
+        return (
+            (category === "Любая" || obj.category === category) &&
+            (status === "Любой" || obj.status === status) &&
+            obj.price >= priceFrom &&
+            obj.price <= priceTo &&
+            obj.rooms >= roomsFrom &&
+            obj.rooms <= roomsTo
+        );
+    });
+
+    renderResults(filtered);
+    renderMarkers(filtered);
+}
+
+// Очистка фильтра
+function resetFilter() {
+    document.getElementById("filterCategory").value = "Любая";
+    document.getElementById("filterStatus").value = "Любой";
+    document.getElementById("priceFrom").value = "";
+    document.getElementById("priceTo").value = "";
+    document.getElementById("roomsFrom").value = "";
+    document.getElementById("roomsTo").value = "";
+
+    renderResults(objects);
+    renderMarkers(objects);
+}
+
+// Отображение списка объявлений
+function renderResults(list) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    if (list.length === 0) {
+        resultsDiv.innerHTML = "<p>Ничего не найдено</p>";
+        return;
     }
-    marker.bindPopup(popupHtml);
-    currentMarkers.push(marker);
-  });
+
+    list.forEach(obj => {
+        let card = document.createElement("div");
+        card.className = "result-card";
+
+        card.innerHTML = `
+            <h3>${obj.title}</h3>
+            <p>${obj.price} у.е. · ${obj.rooms} комн. · ${obj.area} м²</p>
+            <p><i>${obj.category}, ${obj.status}</i></p>
+        `;
+
+        if (obj.photo) {
+            card.innerHTML += `<img src="${obj.photo}" width="200">`;
+        }
+
+        if (obj.contact) {
+            card.innerHTML += `<p><a href="${obj.contact}" target="_blank">Связаться в Telegram</a></p>`;
+        }
+
+        resultsDiv.appendChild(card);
+    });
 }
 
-// Отображение результатов списком
-function renderResults(data) {
-  const results = document.getElementById('results');
-  results.innerHTML = '';
+// Добавление нового объекта
+function addObject() {
+    const title = document.getElementById("title").value;
+    const price = parseFloat(document.getElementById("price").value) || 0;
+    const rooms = parseInt(document.getElementById("rooms").value) || 0;
+    const area = parseFloat(document.getElementById("area").value) || 0;
+    const category = document.getElementById("category").value;
+    const status = document.getElementById("status").value;
+    const contact = document.getElementById("contact").value;
+    const lat = parseFloat(document.getElementById("lat").value);
+    const lng = parseFloat(document.getElementById("lng").value);
 
-  if (data.length === 0) {
-    results.innerHTML = '<p>Нет объектов по заданным параметрам.</p>';
-    return;
-  }
-
-  const ul = document.createElement('ul');
-  data.forEach(obj => {
-    const li = document.createElement('li');
-    li.innerHTML = `<b>${obj.title}</b> — ${obj.price} $ — ${obj.rooms} комн. — ${obj.area} м²<br>`;
-    if (obj.photos && obj.photos.length > 0) {
-      obj.photos.forEach(photo => {
-        const img = document.createElement('img');
-        img.src = photo;
-        img.width = 100;
-        li.appendChild(img);
-      });
+    let photo = "";
+    const fileInput = document.getElementById("photo");
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        photo = URL.createObjectURL(file);
     }
-    ul.appendChild(li);
-  });
-  results.appendChild(ul);
+
+    const newObj = { title, price, rooms, area, category, status, contact, lat, lng, photo };
+    objects.push(newObj);
+
+    renderResults(objects);
+    renderMarkers(objects);
+
+    document.getElementById("addForm").reset();
 }
 
-// Добавление объекта
-document.getElementById('addObject').addEventListener('submit', function(e) {
-  e.preventDefault();
-
-  const title = document.getElementById('title').value;
-  const price = parseFloat(document.getElementById('price').value);
-  const rooms = parseInt(document.getElementById('rooms').value);
-  const area = parseFloat(document.getElementById('area').value);
-  const category = document.getElementById('category').value;
-  const status = document.getElementById('status').value;
-  const lat = selectedLat || 41.3111;
-  const lng = selectedLng || 69.2797;
-
-  const photosInput = document.getElementById('photos');
-  const photos = [];
-  if (photosInput.files) {
-    for (let file of photosInput.files) {
-      const url = URL.createObjectURL(file);
-      photos.push(url);
-    }
-  }
-
-  const newObj = { title, price, rooms, area, category, status, lat, lng, photos };
-  objects.push(newObj);
-
-  renderResults(objects);
-  renderMarkers(objects);
-
-  this.reset();
-});
-
-// Переменные для выбранной точки
-let selectedLat = null;
-let selectedLng = null;
-
-// Клик по карте для выбора координат
-document.addEventListener('DOMContentLoaded', () => {
-  initMap();
-  map.on('click', function(e) {
-    selectedLat = e.latlng.lat;
-    selectedLng = e.latlng.lng;
-    alert(`Выбрано место: ${selectedLat.toFixed(5)}, ${selectedLng.toFixed(5)}`);
-  });
-});
-
-// Фильтрация
-function filterObjects() {
-  const category = document.getElementById('filterCategory').value;
-  const status = document.getElementById('filterStatus').value;
-  const priceMin = parseFloat(document.getElementById('filterPriceMin').value) || 0;
-  const priceMax = parseFloat(document.getElementById('filterPriceMax').value) || Infinity;
-  const roomsMin = parseInt(document.getElementById('filterRoomsMin').value) || 0;
-  const roomsMax = parseInt(document.getElementById('filterRoomsMax').value) || Infinity;
-
-  const filtered = objects.filter(obj => {
-    return (category === "Любая" || obj.category === category) &&
-           (status === "Любой" || obj.status === status) &&
-           obj.price >= priceMin && obj.price <= priceMax &&
-           obj.rooms >= roomsMin && obj.rooms <= roomsMax;
-  });
-
-  renderResults(filtered);
-  renderMarkers(filtered);
-}
-
-document.getElementById('applyFilter').addEventListener('click', filterObjects);
-document.getElementById('resetFilter').addEventListener('click', () => {
-  document.getElementById('filterCategory').value = "Любая";
-  document.getElementById('filterStatus').value = "Любой";
-  document.getElementById('filterPriceMin').value = "";
-  document.getElementById('filterPriceMax').value = "";
-  document.getElementById('filterRoomsMin').value = "";
-  document.getElementById('filterRoomsMax').value = "";
-  renderResults(objects);
-  renderMarkers(objects);
-});
+// Запуск
+window.onload = () => {
+    initMap();
+    renderResults(objects);
+};
