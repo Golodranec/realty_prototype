@@ -1,20 +1,99 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Realty v2.0.0</title>
+  <meta charset="UTF-8">
+  <title>Каталог недвижимости</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- Подключаем Leaflet для карты -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
-  <header>🏠 Realty v2.0.0</header>
 
-  <div id="app">
-    <div id="mapMain" style="height:420px"></div>
+  <header>
+    🏠 Каталог недвижимости
+  </header>
+
+  <div class="container">
+
+    <!-- Фильтр -->
+    <div class="filter">
+      <h3>Фильтр</h3>
+      <label>Категория:
+        <select id="filterCategory">
+          <option value="">Любая</option>
+          <option value="Квартира">Квартира</option>
+          <option value="Дом">Дом</option>
+          <option value="Коммерция">Коммерция</option>
+        </select>
+      </label>
+
+      <label>Статус:
+        <select id="filterStatus">
+          <option value="">Любой</option>
+          <option value="Аренда">Аренда</option>
+          <option value="Продажа">Продажа</option>
+        </select>
+      </label>
+
+      <label>Цена (от):
+        <input type="number" id="filterPriceMin">
+      </label>
+      <label>Цена (до):
+        <input type="number" id="filterPriceMax">
+      </label>
+
+      <label>Комнат (от):
+        <input type="number" id="filterRoomsMin">
+      </label>
+      <label>Комнат (до):
+        <input type="number" id="filterRoomsMax">
+      </label>
+
+      <button id="applyFilter">Применить</button>
+      <button id="resetFilter">Сбросить</button>
+    </div>
+
+    <!-- Карта -->
+    <div id="map"></div>
+
+    <!-- Результаты -->
+    <div class="results">
+      <h3>Результаты</h3>
+    </div>
+
+    <!-- Админка -->
+    <div class="admin">
+      <h3>Добавить объект</h3>
+
+      <label>Заголовок:
+        <input type="text" id="title">
+      </label>
+      <label>Цена:
+        <input type="number" id="price">
+      </label>
+      <label>Комнаты:
+        <input type="number" id="rooms">
+      </label>
+      <label>Площадь (м²):
+        <input type="number" id="area">
+      </label>
+      <label>Координаты (широта):
+        <input type="text" id="lat">
+      </label>
+      <label>Координаты (долгота):
+        <input type="text" id="lng">
+      </label>
+      <label>Контакт (ссылка Telegram/телефон):
+        <input type="text" id="contact">
+      </label>
+
+      <button id="addObject">Добавить объект</button>
+    </div>
+
   </div>
 
-  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
