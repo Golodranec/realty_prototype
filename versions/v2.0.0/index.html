@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Каталог недвижимости</title>
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 </head>
 <body>
   <h1>Каталог недвижимости</h1>
 
-  <!-- Фильтр -->
   <div id="filter" class="card">
     <h2>Фильтр</h2>
     <label>Категория:
@@ -35,19 +34,16 @@
     <button onclick="resetFilter()">Сбросить</button>
   </div>
 
-  <!-- Карта -->
   <div id="mapContainer" class="card">
     <h2>Карта объектов</h2>
     <div id="map"></div>
   </div>
 
-  <!-- Результаты -->
   <div id="results" class="card">
     <h2>Результаты</h2>
     <div id="resultsList"></div>
   </div>
 
-  <!-- Админка -->
   <form id="addForm" class="card" onsubmit="event.preventDefault(); addObject();">
     <h2>Добавить объект</h2>
     <label>Заголовок: <input type="text" id="title"></label>
@@ -78,8 +74,7 @@
     <button type="submit">Добавить объект</button>
   </form>
 
-  <!-- Подключение скриптов -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="script.js?v=6"></script>
+  <script src="script.js?v=7"></script>
 </body>
 </html>
