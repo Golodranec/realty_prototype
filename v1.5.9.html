@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Каталог недвижимости — v1.5.9</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e5e7eb;
+      --accent:#2563eb;
+      --danger:#dc2626;
+      --ok:#16a34a;
+      --chip:#eef2ff;
+      --chip-border:#e0e7ff;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    }
+
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    h1{font-size:26px;margin:8px 0 6px}
+    .sub{margin:0 0 14px;color:var(--muted)}
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+      margin:10px 0;
+      box-shadow:0 4px 18px rgba(0,0,0,.04);
+    }
+
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .col{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    input,select,textarea,button{
+      font-size:14px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#fff;
+      color:var(--text);
+    }
+    input[type="number"]{width:140px}
+    textarea{resize:vertical}
+
+    .btn{cursor:pointer;user-select:none}
+    .btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
+    .btn-ghost{background:#fff}
+    .btn-danger{background:#fff;color:var(--danger);border-color:#fecaca}
+
+    .grid{display:grid;gap:12px}
+    @media(min-width:1000px){ .grid-2{grid-template-columns:1.05fr .95fr} }
+
+    .section-title{font-weight:700;margin:6px 0 8px}
+    .hr{height:1px;background:var(--border);border:0;margin:12px 0}
+
+    /* MAPS */
+    #mapMain{width:100%;height:430px;border-radius:12px;border:1px solid var(--border);margin-top:8px}
+    .map-sm{width:100%;height:240px;border-radius:12px;border:1px solid var(--border)}
+    .dim{opacity:.5;pointer-events:none}
+
+    /* LIST */
+    .list{display:grid;gap:10px}
+    .item{
+      background:#fff;border:1px solid var(--border);
+      border-radius:12px;padding:12px
+    }
+    .hdr{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:6px;
+      padding:2px 8px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted)
+    }
+    .price{font-weight:800}
+    .muted{color:var(--muted)}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+    .chip{background:var(--chip);border:1px solid var(--chip-border);color:#3730a3;border-radius:999px;padding:2px 8px;font-size:12px}
+
+    /* GALLERY */
+    .gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .gallery img{width:100px;height:78px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+    .thumb{width:100%;max-width:320px;height:200px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+
+    /* MODE TOGGLE: поиск по карте / по районам */
+    .mode{
+      display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+      background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px
+    }
+    .mode label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text)}
+
+    /* BADGE & NOTE */
+    .badge{display:inline-block;font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--muted)}
+    .note{font-size:12px;color:var(--muted);margin-top:4px}
+
+    /* ADMIN */
+    .admin-grid{display:grid;gap:10px}
+    @media(min-width:900px){ .admin-grid{grid-template-columns:repeat(2,1fr)} }
+    .inline-inputs{display:flex;gap:8px;flex-wrap:wrap}
+
+    /* TABS (динамические поля по типу недвижимости) */
+    .tabs{display:flex;gap:8px;margin:6px 0}
+    .tab{padding:6px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;font-size:13px}
+    .tab.active{background:#eef2ff;border-color:#e0e7ff;color:#3730a3}
+
+    /* TABLE-LIKE small layout */
+    .kv{display:grid;grid-template-columns:140px 1fr;gap:6px;font-size:14px}
+    .kv b{color:#111827}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Каталог недвижимости v1.5.9</h1>
+    <p class="sub">Поиск по карте или по районам, фильтры и расширенные параметры</p>
+
+    <!-- Переключатель режима поиска -->
+    <div class="mode">
+      <label><input type="radio" name="mode" value="map" checked> Поиск по карте</label>
+      <label><input type="radio" name="mode" value="districts"> Поиск по районам</label>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card">
+      <h3>Фильтр</h3>
+      <div class="row">
+        <div>
+          <label>Категория</label>
+          <select id="filterCategory"><option value="">Любая</option></select>
+        </div>
+        <div>
+          <label>Статус</label>
+          <select id="filterStatus"><option value="">Любой</option></select>
+        </div>
+        <div id="districtFilterWrap">
+          <label>Район</label>
+          <select id="filterDistrict"><option value="">Любой</option></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Цена от</label><input type="number" id="filterPriceMin"></div>
+        <div><label>Цена до</label><input type="number" id="filterPriceMax"></div>
+        <div><label>Комнат от</label><input type="number" id="filterRoomsMin"></div>
+        <div><label>Комнат до</label><input type="number" id="filterRoomsMax"></div>
+      </div>
+
+      <div class="row">
+        <div><label><input type="checkbox" id="filterBasement"> Подвал</label></div>
+        <div><label><input type="checkbox" id="filterGround"> Цокольный</label></div>
+        <div><label>Этаж от</label><input type="number" id="filterFloorMin"></div>
+        <div><label>Этаж до</label><input type="number" id="filterFloorMax"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Метро</label>
+          <select id="filterMetro"><option value="">Любое</option></select>
+        </div>
+        <div>
+          <label>Расстояние от метро (м)</label>
+          <input type="number" id="filterMetroRadius" placeholder="1000">
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn-primary" onclick="applyFilters()">Применить</button>
+        <button onclick="resetFilters()">Сбросить</button>
+      </div>
+    </div>
+
+    <!-- Карта -->
+    <div id="mapMain"></div>
+
+    <!-- Результаты -->
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <!-- Админка -->
+    <div class="card">
+      <h3>Админка (добавить объект)</h3>
+      <div class="row">
+        <div><label>Категория</label><select id="addCategory"></select></div>
+        <div><label>Статус</label><select id="addStatus"></select></div>
+        <div><label>Район</label><select id="addDistrict"></select></div>
+      </div>
+      <div class="row">
+        <div><label>Заголовок</label><input id="addTitle"></div>
+        <div><label>Цена</label><input type="number" id="addPrice"></div>
+        <div><label>Комнаты</label><input type="number" id="addRooms"></div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Этаж</label>
+          <select id="addFloor">
+            <option value="">---</option>
+            <option>Подвал</option>
+            <option>Цокольный</option>
+            <option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option><option>6</option>
+            <option>7</option><option>8</option><option>9</option>
+            <option>10</option>
+          </select>
+        </div>
+        <div><label>Площадь (м²)</label><input type="number" id="addArea"></div>
+      </div>
+      <div class="row">
+        <div><label>Фото</label><input type="file" id="addPhotos" multiple></div>
+      </div>
+      <div class="row">
+        <div><label>Координаты</label><input id="addLat" placeholder="lat"><input id="addLng" placeholder="lng"></div>
+      </div>
+
+      <!-- Дополнительные параметры -->
+      <div class="section-title">Дополнительные параметры</div>
+      <div id="extraFields"></div>
+
+      <div class="row"><button class="btn-primary" onclick="addObject()">Добавить объект</button></div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script>
+    // --- Данные ---
+    let objects = JSON.parse(localStorage.getItem("objects")||"[]");
+    let categories = ["Квартира","Дом","Земля","Коммерция"];
+    let statuses = ["Аренда","Продажа"];
+    let districts = ["Юнусабад","Чиланзар","Сергели"];
+    let metros = ["Алмазар","Авиасозлар","Минор","Пахтакор"];
+
+    // --- Карта ---
+    const map = L.map("mapMain").setView([41.3111, 69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:"© OpenStreetMap"
+    }).addTo(map);
+    let markersLayer = L.layerGroup().addTo(map);
+
+    // --- Рендер маркеров ---
+    function renderMarkers(list){
+      markersLayer.clearLayers();
+      list.forEach(obj=>{
+        if(obj.lat && obj.lng){
+          const marker = L.marker([obj.lat,obj.lng]).addTo(markersLayer);
+          marker.bindPopup(`
+            <b>${obj.title}</b><br>
+            ${obj.price||""} $<br>
+            ${obj.rooms||""} комн<br>
+            Этаж: ${obj.floor||""}<br>
+            <a href="https://t.me/smeksy?text=Здравствуйте,%20интересует%20объявление:%20${encodeURIComponent(location.href)}" target="_blank">Написать в Telegram</a><br>
+            ${obj.photos?.[0]?`<img src="${obj.photos[0]}" style="width:100px;height:80px;object-fit:cover">`:""}
+          `);
+        }
+      });
+    }
+
+    // --- Рендер фильтров ---
+    function renderFilters(){
+      categories.forEach(c=>{
+        document.getElementById("filterCategory").insertAdjacentHTML("beforeend",`<option>${c}</option>`);
+        document.getElementById("addCategory").insertAdjacentHTML("beforeend",`<option>${c}</option>`);
+      });
+      statuses.forEach(s=>{
+        document.getElementById("filterStatus").insertAdjacentHTML("beforeend",`<option>${s}</option>`);
+        document.getElementById("addStatus").insertAdjacentHTML("beforeend",`<option>${s}</option>`);
+      });
+      districts.forEach(d=>{
+        document.getElementById("filterDistrict").insertAdjacentHTML("beforeend",`<option>${d}</option>`);
+        document.getElementById("addDistrict").insertAdjacentHTML("beforeend",`<option>${d}</option>`);
+      });
+      metros.forEach(m=>{
+        document.getElementById("filterMetro").insertAdjacentHTML("beforeend",`<option>${m}</option>`);
+      });
+    }
+
+    // --- Рендер результатов ---
+    function renderResults(list){
+      const res=document.getElementById("results");
+      res.innerHTML="";
+      list.forEach(o=>{
+        const photosHtml=o.photos?.map(p=>`<img src="${p}">`).join("")||"";
+        const chips=(o.features||[]).map(f=>`<span class="chip">${f}</span>`).join("");
+        res.insertAdjacentHTML("beforeend",`
+          <div class="item">
+            <div class="hdr"><b>${o.title}</b> <span class="price">${o.price||""} $</span></div>
+            <div>${o.category}, ${o.status}, ${o.district}</div>
+            <div>${o.rooms||""} комн • ${o.area||""} м² • Этаж: ${o.floor||""}</div>
+            <div class="chips">${chips}</div>
+            <div class="gallery">${photosHtml}</div>
+            <a href="https://t.me/smeksy?text=Здравствуйте,%20интересует%20объявление:%20${encodeURIComponent(location.href)}" target="_blank">Написать в Telegram</a>
+          </div>
+        `);
+      });
+      renderMarkers(list);
+    }
+
+    // --- Фильтрация ---
+    function applyFilters(){
+      let fcat=document.getElementById("filterCategory").value;
+      let fstat=document.getElementById("filterStatus").value;
+      let fdist=document.getElementById("filterDistrict").value;
+      let pmin=+document.getElementById("filterPriceMin").value||0;
+      let pmax=+document.getElementById("filterPriceMax").value||Infinity;
+      let rmin=+document.getElementById("filterRoomsMin").value||0;
+      let rmax=+document.getElementById("filterRoomsMax").value||Infinity;
+      let fBasement=document.getElementById("filterBasement").checked;
+      let fGround=document.getElementById("filterGround").checked;
+      let fFloorMin=+document.getElementById("filterFloorMin").value||0;
+      let fFloorMax=+document.getElementById("filterFloorMax").value||Infinity;
+      let fMetro=document.getElementById("filterMetro").value;
+      let fRadius=+document.getElementById("filterMetroRadius").value||Infinity;
+
+      const filtered=objects.filter(o=>
+        (!fcat||o.category===fcat)&&
+        (!fstat||o.status===fstat)&&
+        (!fdist||o.district===fdist)&&
+        (!o.price||(o.price>=pmin&&o.price<=pmax))&&
+        (!o.rooms||(o.rooms>=rmin&&o.rooms<=rmax))&&
+        (!fBasement||o.floor==="Подвал")&&
+        (!fGround||o.floor==="Цокольный")&&
+        (!o.floor||(parseInt(o.floor)||0)>=fFloorMin)&&
+        (!o.floor||(parseInt(o.floor)||0)<=fFloorMax)
+      );
+      renderResults(filtered);
+    }
+
+    function resetFilters(){
+      document.querySelectorAll("#filterCategory,#filterStatus,#filterDistrict,#filterPriceMin,#filterPriceMax,#filterRoomsMin,#filterRoomsMax,#filterFloorMin,#filterFloorMax,#filterMetro,#filterMetroRadius").forEach(el=>el.value="");
+      document.getElementById("filterBasement").checked=false;
+      document.getElementById("filterGround").checked=false;
+      renderResults(objects);
+    }
+
+    // --- Динамические поля по типу недвижимости ---
+    document.getElementById("addCategory").addEventListener("change",e=>{
+      const cat=e.target.value;
+      const extra=document.getElementById("extraFields");
+      extra.innerHTML="";
+      if(cat==="Квартира"){
+        extra.innerHTML=`
+          <div><label><input type="checkbox" value="Кондиционер" class="feature"> Кондиционер</label></div>
+          <div><label><input type="checkbox" value="Холодильник" class="feature"> Холодильник</label></div>
+          <div><label><input type="checkbox" value="Мебель" class="feature"> Мебель</label></div>
+          <div><label><input type="checkbox" value="Евроремонт" class="feature"> Евроремонт</label></div>`;
+      }
+      if(cat==="Дом"){
+        extra.innerHTML=`
+          <div><label><input type="checkbox" value="Гараж" class="feature"> Гараж</label></div>
+          <div><label><input type="checkbox" value="Отопление" class="feature"> Отопление</label></div>
+          <div><label><input type="checkbox" value="Бассейн" class="feature"> Бассейн</label></div>`;
+      }
+      if(cat==="Коммерция"){
+        extra.innerHTML=`
+          <div><label><input type="checkbox" value="Офис" class="feature"> Офис</label></div>
+          <div><label><input type="checkbox" value="Магазин" class="feature"> Магазин</label></div>
+          <div><label><input type="checkbox" value="Ресторан" class="feature"> Ресторан</label></div>`;
+      }
+    });
+
+    // --- Добавление объекта ---
+    function addObject(){
+      let title=document.getElementById("addTitle").value.trim();
+      let category=document.getElementById("addCategory").value;
+      let status=document.getElementById("addStatus").value;
+      let district=document.getElementById("addDistrict").value;
+      if(!title||!category||!status||!district){
+        alert("Заполни обязательные поля: Заголовок, Категория, Статус, Район");
+        return;
+      }
+      let price=+document.getElementById("addPrice").value||null;
+      let rooms=+document.getElementById("addRooms").value||null;
+      let area=+document.getElementById("addArea").value||null;
+      let floor=document.getElementById("addFloor").value;
+      let lat=parseFloat(document.getElementById("addLat").value)||null;
+      let lng=parseFloat(document.getElementById("addLng").value)||null;
+
+      // Доп. параметры
+      let features=[...document.querySelectorAll("#extraFields .feature:checked")].map(c=>c.value);
+
+      let files=document.getElementById("addPhotos").files;
+      let photos=[];
+      if(files.length){
+        let done=0;
+        for(let f of files){
+          let r=new FileReader();
+          r.onload=e=>{
+            photos.push(e.target.result);done++;
+            if(done===files.length) saveObj();
+          };
+          r.readAsDataURL(f);
+        }
+      } else saveObj();
+
+      function saveObj(){
+        let obj={title,category,status,district,price,rooms,area,floor,lat,lng,photos,features};
+        objects.push(obj);
+        localStorage.setItem("objects",JSON.stringify(objects));
+        renderResults(objects);
+      }
+    }
+
+    // --- Init ---
+    renderFilters();
+    renderResults(objects);
+  </script>
+</body>
+</html>
