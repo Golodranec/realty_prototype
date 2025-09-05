@@ -67,9 +67,11 @@
         <option value="Продажа">Продажа</option>
       </select>
     </label>
-    <label>Фото: <input type="file" id="photo" multiple></label>
-    <div id="preview" class="preview"></div>
-    <label>Контакт (ссылка Telegram/телефон): <input type="text" id="contact"></label>
+    <label>Фото:
+      <input type="file" id="photo" multiple onchange="previewPhotos(event)">
+    </label>
+    <div id="preview"></div>
+    <label>Контакт (Telegram/телефон): <input type="text" id="contact"></label>
     <p>Кликните на карту, чтобы выбрать расположение объекта.</p>
     <input type="hidden" id="lat">
     <input type="hidden" id="lng">
