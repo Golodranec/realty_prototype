@@ -1,3 +1,5 @@
+alert("✅ script.js v4 загружен");
+
 let objects = [];
 let map;
 let markers = [];
@@ -210,6 +212,7 @@ function addObject() {
         return;
     }
 
+    // читаем все фото
     let readers = [];
     for (let i = 0; i < files.length; i++) {
         readers.push(new Promise((resolve) => {
@@ -220,6 +223,7 @@ function addObject() {
     }
 
     Promise.all(readers).then((photosBase64) => {
+        console.log("📸 Загружено фото:", photosBase64.length);
         saveNewObject({ title, price, rooms, area, category, status, contact, lat, lng, photos: photosBase64 });
     });
 }
