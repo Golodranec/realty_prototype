@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Каталог недвижимости — v1.8.2-hybrid</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b;
+      --border:#e5e7eb; --accent:#2563eb; --danger:#dc2626;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    h1{font-size:24px;margin:10px 0}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:10px 0}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .col{display:flex;flex-direction:column;gap:6px;min-width:200px}
+    label{font-size:12px;color:var(--muted)}
+    input,select,button{font-size:14px;padding:8px;border:1px solid var(--border);border-radius:8px}
+    button{cursor:pointer}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-danger{background:#fff;color:var(--danger);border-color:#fecaca}
+    #mapMain{width:100%;height:420px;border-radius:12px;margin-top:8px}
+    #adminObjMap,#geoMap{height:220px;border:1px solid var(--border);border-radius:8px;margin-top:6px}
+    .list{display:grid;gap:12px}
+    .item{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
+    .hdr{display:flex;justify-content:space-between}
+    .chip{background:#eef2ff;border:1px solid #c7d2fe;padding:2px 8px;border-radius:999px;font-size:12px;margin:2px;display:inline-block}
+    .gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .gallery img{width:100px;height:80px;object-fit:cover;border-radius:8px}
+    .tree{list-style:none;padding:0}
+    .tree li{margin:6px 0;padding:8px;border:1px solid var(--border);border-radius:10px;background:#fff}
+    .node-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Каталог недвижимости v1.8.2-hybrid</h1>
+
+    <!-- Фильтр -->
+    <div class="card" id="filtersCard">
+      <h3>Фильтр</h3>
+      <div id="filterTags"></div>
+      <div id="dynamicFilters" class="row"></div>
+      <div class="row">
+        <button class="btn-primary" onclick="applyFilters()">Применить</button>
+        <button onclick="resetFilters()">Сбросить</button>
+      </div>
+    </div>
+
+    <!-- Карта -->
+    <div id="mapMain"></div>
+
+    <!-- Результаты -->
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <!-- Админка: добавление объекта -->
+    <div class="card" id="adminObjects">
+      <h3>Админ: Объекты</h3>
+      <div id="addTags"></div>
+      <div class="row">
+        <div class="col"><label>Lat</label><input id="addLat"></div>
+        <div class="col"><label>Lng</label><input id="addLng"></div>
+      </div>
+      <div id="adminObjMap"></div>
+      <div id="dynamicFormFields" class="row"></div>
+      <div class="row">
+        <div class="col"><label>Фото</label><input type="file" id="addPhotos" multiple><div id="photoPreview" class="gallery"></div></div>
+      </div>
+      <div class="row">
+        <button class="btn-primary" onclick="saveObject()">Сохранить</button>
+        <button onclick="resetForm()">Очистить</button>
+      </div>
+    </div>
+
+    <!-- Админка: дерево -->
+    <div class="card" id="adminTree">
+      <h3>Админ: Дерево (группа/категория/статус + поля)</h3>
+      <button onclick="addRoot()">+ Корень</button>
+      <ul id="tree" class="tree"></ul>
+      <div class="row">
+        <div class="col"><label>Узел для гео</label><input id="geoNodeName" readonly></div>
+        <div class="col"><label>Радиус (м)</label><input id="geoRadius" type="number" value="1000"></div>
+      </div>
+      <div id="geoMap"></div>
+      <div class="row">
+        <button class="btn-primary" onclick="saveGeoForNode()">Сохранить гео</button>
+        <button onclick="clearGeoForNode()">Сбросить</button>
+      </div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const TELEGRAM_USER="smeksy";
+    const $=id=>document.getElementById(id); const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+    let objects=JSON.parse(localStorage.getItem("objects_v182")||"[]");
+    let tree=JSON.parse(localStorage.getItem("tree_v182")||"null");
+    if(!tree){
+      tree=[{id:uid(), kind:"group", label:"Недвижимость", children:[
+        {id:uid(), kind:"category", label:"Квартира", children:[
+          {id:uid(), kind:"status", label:"Аренда", children:[
+            {id:uid(), kind:"field", field:{key:"rent_type",type:"select",label:"Тип аренды",options:["Посуточная","Долгосрочная"],inFilter:true}}
+          ]},
+          {id:uid(), kind:"status", label:"Продажа", children:[]}
+        ]},
+        {id:uid(), kind:"category", label:"Коммерция", children:[
+          {id:uid(), kind:"status", label:"Аренда", children:[
+            {id:uid(), kind:"category", label:"Офис", children:[]},
+            {id:uid(), kind:"category", label:"Склад", children:[]}
+          ]}
+        ]}
+      ]}];
+      persistTree();
+    }
+    function persistTree(){localStorage.setItem("tree_v182",JSON.stringify(tree));}
+    function persistObjects(){localStorage.setItem("objects_v182",JSON.stringify(objects));}
+
+    // Карты
+    const map=L.map("mapMain").setView([41.31,69.28],12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    let markersLayer=L.layerGroup().addTo(map);
+
+    const adminObjMap=L.map("adminObjMap").setView([41.31,69.28],12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(adminObjMap);
+    let adminObjMarker=null;
+    adminObjMap.on("click",e=>{setObjLatLng(e.latlng.lat,e.latlng.lng,true);});
+    function setObjLatLng(lat,lng,pan){
+      $("addLat").value=lat.toFixed(6); $("addLng").value=lng.toFixed(6);
+      if(adminObjMarker) adminObjMarker.setLatLng([lat,lng]); else adminObjMarker=L.marker([lat,lng]).addTo(adminObjMap);
+      if(pan) adminObjMap.setView([lat,lng],13);
+    }
+
+    const geoMap=L.map("geoMap").setView([41.31,69.28],12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(geoMap);
+    let geoMarker=null,geoCircle=null,currentGeoNodeId=null;
+    geoMap.on("click",e=>placeGeo(e.latlng.lat,e.latlng.lng,true));
+    function placeGeo(lat,lng,pan){
+      const r=+($("geoRadius").value||1000);
+      if(geoMarker) geoMarker.setLatLng([lat,lng]); else geoMarker=L.marker([lat,lng]).addTo(geoMap);
+      if(geoCircle){geoCircle.setLatLng([lat,lng]);geoCircle.setRadius(r);} else geoCircle=L.circle([lat,lng],{radius:r,color:"#2563eb"}).addTo(geoMap);
+      if(pan) geoMap.setView([lat,lng],13);
+    }
+    // дерево UI
+    function renderTreeUI(){
+      $("tree").innerHTML=""; tree.forEach(n=>$("tree").appendChild(renderNode(n))); persistTree();
+      rebuildTagsUI(); rebuildFiltersUI(); rebuildFormUI();
+    }
+    function renderNode(node){
+      const li=document.createElement("li"); const row=document.createElement("div"); row.className="node-row";
+      const name=document.createElement("input"); name.value=node.label;
+      name.oninput=()=>{node.label=name.value;persistTree();};
+      const kind=document.createElement("select"); ["group","category","status","field"].forEach(k=>{const o=document.createElement("option");o.value=k;o.textContent=k;if(node.kind===k)o.selected=true;kind.appendChild(o);});
+      kind.onchange=()=>{node.kind=kind.value;if(node.kind==="field"&&!node.field)node.field={key:"f"+uid(),type:"text",label:node.label,inFilter:false};persistTree();renderTreeUI();};
+      const btnAdd=document.createElement("button");btnAdd.textContent="+Под";btnAdd.onclick=()=>{node.children=node.children||[];node.children.push({id:uid(),kind:"category",label:"Новый",children:[]});renderTreeUI();};
+      row.append(name,kind,btnAdd); li.appendChild(row);
+      if(node.kind==="field"&&node.field){li.appendChild(document.createTextNode("Поле: "+node.field.label));}
+      const ul=document.createElement("ul");(node.children||[]).forEach(ch=>ul.appendChild(renderNode(ch)));li.appendChild(ul);return li;
+    }
+
+    function addRoot(){tree.push({id:uid(),kind:"group",label:"Новая группа",children:[]});renderTreeUI();}
+
+    // теги
+    function rebuildTagsUI(){ $("filterTags").innerHTML=""; $("addTags").innerHTML=""; }
+    function rebuildFiltersUI(){ $("dynamicFilters").innerHTML=""; }
+    function rebuildFormUI(){ $("dynamicFormFields").innerHTML=""; }
+
+    // объекты
+    function saveObject(){alert("Объект сохранён (демо)");}
+    function resetForm(){$("addLat").value="";$("addLng").value="";}
+
+    // фильтры
+    function applyFilters(){renderResults(objects);}
+    function resetFilters(){renderResults(objects);}
+
+    function renderResults(list){$("results").innerHTML=list.map(o=>`<div class="item">${o.id}</div>`).join("");}
+
+    renderTreeUI(); renderResults(objects);
+  </script>
+</body>
+</html>
