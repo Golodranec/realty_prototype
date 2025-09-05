@@ -86,7 +86,7 @@ button:hover {
   margin: 5px 0;
 }
 
-/* Слайдер фото */
+/* Слайдер фото (карточки и попапы) */
 .photo-slider {
   position: relative;
   width: 200px;
