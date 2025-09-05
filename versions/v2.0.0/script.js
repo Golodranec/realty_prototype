@@ -3,7 +3,21 @@ let map;
 let markers = [];
 let tempMarker = null;
 
-// Инициализация карты
+// ===== Работа с localStorage =====
+function saveObjects() {
+    localStorage.setItem("objects", JSON.stringify(objects));
+}
+
+function loadObjects() {
+    const data = localStorage.getItem("objects");
+    if (data) {
+        objects = JSON.parse(data);
+    } else {
+        objects = [];
+    }
+}
+
+// ===== Инициализация карты =====
 function initMap() {
     map = L.map("map").setView([41.3111, 69.2797], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -16,6 +30,7 @@ function initMap() {
         document.getElementById("lat").value = lat;
         document.getElementById("lng").value = lng;
 
+        // временный маркер
         if (tempMarker) {
             tempMarker.setLatLng([lat, lng]);
         } else {
@@ -29,7 +44,7 @@ function initMap() {
     });
 }
 
-// Рендер объектов на карте
+// ===== Рендер объектов на карте =====
 function renderMarkers(filteredObjects) {
     markers.forEach(m => map.removeLayer(m));
     markers = [];
@@ -53,14 +68,14 @@ function renderMarkers(filteredObjects) {
             popupContent += `<a href="${obj.contact}" target="_blank">Связаться</a><br>`;
         }
 
-        popupContent += `<button onclick="scrollToCard(${index})">Подробнее</button>`;
+        popupContent += `<button onclick="scrollToCard(${index})">Интересует</button>`;
 
         marker.bindPopup(popupContent);
         markers.push(marker);
     });
 }
 
-// Скролл к карточке
+// ===== Скролл к карточке =====
 function scrollToCard(index) {
     const cards = document.querySelectorAll(".result-card");
     if (cards[index]) {
@@ -72,7 +87,7 @@ function scrollToCard(index) {
     }
 }
 
-// Фильтрация
+// ===== Фильтрация =====
 function applyFilter() {
     const category = document.getElementById("filterCategory").value;
     const status = document.getElementById("filterStatus").value;
@@ -108,7 +123,7 @@ function resetFilter() {
     renderMarkers(objects);
 }
 
-// Отображение карточек
+// ===== Отображение карточек =====
 function renderResults(list) {
     const resultsDiv = document.getElementById("resultsList");
     resultsDiv.innerHTML = "";
@@ -131,14 +146,13 @@ function renderResults(list) {
         if (obj.photos && obj.photos.length > 0) {
             let slider = document.createElement("div");
             slider.className = "photo-slider";
-            slider.dataset.index = "0"; // текущая картинка
+            slider.dataset.index = "0";
 
             let img = document.createElement("img");
             img.src = obj.photos[0];
             img.className = "slider-img";
             slider.appendChild(img);
 
-            // кнопки
             let prevBtn = document.createElement("button");
             prevBtn.innerText = "◀";
             prevBtn.className = "slider-btn prev";
@@ -163,7 +177,7 @@ function renderResults(list) {
     });
 }
 
-// Логика переключения слайдов
+// ===== Переключение слайдов =====
 function changeSlide(slider, photos, direction) {
     let index = parseInt(slider.dataset.index);
     index = (index + direction + photos.length) % photos.length;
@@ -171,7 +185,7 @@ function changeSlide(slider, photos, direction) {
     slider.querySelector(".slider-img").src = photos[index];
 }
 
-// Добавление нового объекта
+// ===== Добавление объекта (с base64 фото) =====
 function addObject() {
     const title = document.getElementById("title").value;
     const price = parseFloat(document.getElementById("price").value) || 0;
@@ -179,20 +193,44 @@ function addObject() {
     const area = parseFloat(document.getElementById("area").value) || 0;
     const category = document.getElementById("category").value;
     const status = document.getElementById("status").value;
-    const contact = document.getElementById("contact").value;
+    let contact = document.getElementById("contact").value;
     const lat = parseFloat(document.getElementById("lat").value) || null;
     const lng = parseFloat(document.getElementById("lng").value) || null;
 
-    let photos = [];
-    const fileInput = document.getElementById("photo");
-    if (fileInput.files.length > 0) {
-        for (let i = 0; i < fileInput.files.length; i++) {
-            photos.push(URL.createObjectURL(fileInput.files[i]));
-        }
+    // автоссылка для Telegram
+    if (contact.startsWith("@")) {
+        contact = "https://t.me/" + contact.slice(1);
+    } else if (contact.startsWith("t.me/")) {
+        contact = "https://" + contact;
     }
 
-    const newObj = { title, price, rooms, area, category, status, contact, lat, lng, photos };
-    objects.push(newObj);
+    const fileInput = document.getElementById("photo");
+    const files = fileInput.files;
+
+    if (files.length === 0) {
+        saveNewObject({ title, price, rooms, area, category, status, contact, lat, lng, photos: [] });
+        return;
+    }
+
+    let photosBase64 = [];
+    let loadedCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            photosBase64.push(e.target.result);
+            loadedCount++;
+            if (loadedCount === files.length) {
+                saveNewObject({ title, price, rooms, area, category, status, contact, lat, lng, photos: photosBase64 });
+            }
+        };
+        reader.readAsDataURL(files[i]);
+    }
+}
+
+function saveNewObject(obj) {
+    objects.push(obj);
+    saveObjects();
 
     renderResults(objects);
     renderMarkers(objects);
@@ -205,10 +243,13 @@ function addObject() {
     document.getElementById("addForm").reset();
 }
 
-// Запуск
+// ===== Запуск =====
 window.onload = () => {
+    loadObjects();
     initMap();
     renderResults(objects);
+    renderMarkers(objects);
+
     map.whenReady(() => {
         map.invalidateSize();
     });
