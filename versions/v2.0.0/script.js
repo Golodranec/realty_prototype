@@ -1,4 +1,4 @@
-alert("✅ script.js v9 загружен");
+alert("✅ script.js v9.2 загружен");
 
 let objects = [];
 let map;
@@ -212,6 +212,38 @@ function previewPhotos(event) {
     };
     reader.readAsDataURL(files[i]);
   }
+}
+
+/* ====== Фильтр ====== */
+function applyFilter() {
+  const category = document.getElementById("filterCategory").value;
+  const status = document.getElementById("filterStatus").value;
+  const priceFrom = parseFloat(document.getElementById("filterPriceMin").value) || 0;
+  const priceTo = parseFloat(document.getElementById("filterPriceMax").value) || Infinity;
+  const roomsFrom = parseInt(document.getElementById("filterRoomsMin").value) || 0;
+  const roomsTo = parseInt(document.getElementById("filterRoomsMax").value) || Infinity;
+
+  const filtered = objects.filter(obj =>
+    (category === "Любая" || obj.category === category) &&
+    (status === "Любой" || obj.status === status) &&
+    obj.price >= priceFrom && obj.price <= priceTo &&
+    obj.rooms >= roomsFrom && obj.rooms <= roomsTo
+  );
+
+  renderResults(filtered);
+  renderMarkers(filtered);
+}
+
+function resetFilter() {
+  document.getElementById("filterCategory").value = "Любая";
+  document.getElementById("filterStatus").value = "Любой";
+  document.getElementById("filterPriceMin").value = "";
+  document.getElementById("filterPriceMax").value = "";
+  document.getElementById("filterRoomsMin").value = "";
+  document.getElementById("filterRoomsMax").value = "";
+
+  renderResults(objects);
+  renderMarkers(objects);
 }
 
 window.onload = () => {
