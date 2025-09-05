@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Realty v1.8.5b-stable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"/>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--b:#e5e7eb;--accent:#2563eb;--danger:#dc2626}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif}
+    header{background:var(--accent);color:#fff;padding:10px 14px;font-weight:700}
+    main{max-width:1200px;margin:0 auto;padding:12px}
+    .card{background:var(--card);border:1px solid var(--b);border-radius:12px;padding:12px;margin:10px 0;box-shadow:0 3px 16px rgba(0,0,0,.04)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .col{display:flex;flex-direction:column;gap:6px;min-width:200px}
+    label{font-size:12px;color:var(--muted)}
+    input,select,button{font-size:14px;padding:8px;border:1px solid var(--b);border-radius:8px;background:#fff}
+    button{cursor:pointer}
+    .btn{background:#fff}
+    .btn-primary{background:var(--accent);color:#fff;border-color:#1e40af}
+    .btn-danger{background:#fff;color:var(--danger);border-color:#fecaca}
+    #mapMain{height:420px;border-radius:12px;border:1px solid var(--b)}
+    #adminMap{height:240px;border-radius:10px;border:1px solid var(--b)}
+    .list{display:grid;gap:10px}
+    .item{border:1px solid var(--b);border-radius:10px;padding:10px;background:#fff}
+    .hdr{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .price{font-weight:800}
+    .gallery{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .thumb{position:relative}
+    .thumb img{width:100px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--b)}
+    .thumb .del{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer}
+    .chip{display:inline-block;background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:2px 8px;font-size:12px;margin:2px 4px 0 0}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--b);border-radius:999px;padding:4px 10px;background:#fff}
+    .note{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>🏠 Realty v1.8.5b-stable</header>
+  <main>
+    <div class="card">
+      <h3>Фильтр</h3>
+      <div class="row">
+        <div class="col"><label>Группа</label><select id="fGroup"></select></div>
+        <div class="col"><label>Категория</label><select id="fCategory"></select></div>
+        <div class="col"><label>Статус</label><select id="fStatus"></select></div>
+        <div class="col"><label>Текст</label><input id="fQuery" placeholder="заголовок/описание"></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Цена, $</label><div class="row" style="gap:6px"><input type="number" id="fPriceMin" placeholder="от" style="width:120px"><input type="number" id="fPriceMax" placeholder="до" style="width:120px"></div></div>
+        <div class="col"><label>Комнаты</label><div class="row" style="gap:6px"><input type="number" id="fRoomsMin" placeholder="от" style="width:120px"><input type="number" id="fRoomsMax" placeholder="до" style="width:120px"></div></div>
+        <div class="col"><label>Площадь, м²</label><div class="row" style="gap:6px"><input type="number" id="fAreaMin" placeholder="от" style="width:120px"><input type="number" id="fAreaMax" placeholder="до" style="width:120px"></div></div>
+        <div class="col"><label>Состояние</label><select id="fCondition"><option value="">Любое</option><option>Черновая</option><option>Косметика</option><option>Евроремонт</option><option>Дизайнерский</option></select></div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label>Удобства</label>
+          <div id="fAmenities" class="row">
+            <label class="pill"><input type="checkbox" value="Кондиционер"> Кондиционер</label>
+            <label class="pill"><input type="checkbox" value="Холодильник"> Холодильник</label>
+            <label class="pill"><input type="checkbox" value="Мебель"> Мебель</label>
+            <label class="pill"><input type="checkbox" value="Интернет"> Интернет</label>
+            <label class="pill"><input type="checkbox" value="Лифт"> Лифт</label>
+            <label class="pill"><input type="checkbox" value="Охрана"> Охрана</label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col"><label>По карте: радиус (м)</label><input type="number" id="fRadius" placeholder="например 1000"></div>
+        <div class="col note">Кликни по карте, чтобы задать центр круга</div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="applyFilters()">Применить</button>
+        <button class="btn" onclick="resetFilters()">Сбросить</button>
+      </div>
+    </div>
+
+    <div id="mapMain" class="card"></div>
+
+    <div class="card">
+      <h3>Результаты</h3>
+      <div id="results" class="list"></div>
+    </div>
+
+    <div class="card">
+      <h3>Админка: добавить/редактировать</h3>
+      <div class="row">
+        <div class="col"><label>Группа</label><select id="aGroup"></select></div>
+        <div class="col"><label>Категория</label><select id="aCategory"></select></div>
+        <div class="col"><label>Статус</label><select id="aStatus"></select></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Заголовок *</label><input id="aTitle" required></div>
+        <div class="col"><label>Цена, $ *</label><input id="aPrice" type="number" required></div>
+        <div class="col"><label>Комнаты</label><input id="aRooms" type="number"></div>
+        <div class="col"><label>Площадь, м²</label><input id="aArea" type="number"></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Состояние</label><select id="aCondition"><option value="">—</option><option>Черновая</option><option>Косметика</option><option>Евроремонт</option><option>Дизайнерский</option></select></div>
+        <div class="col"><label>Тип аренды (только если статус Аренда)</label><select id="aRentType"><option value="">—</option><option>Посуточная</option><option>Долгосрочная</option></select></div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label>Удобства</label>
+          <div id="aAmenities" class="row">
+            <label class="pill"><input type="checkbox" value="Кондиционер"> Кондиционер</label>
+            <label class="pill"><input type="checkbox" value="Холодильник"> Холодильник</label>
+            <label class="pill"><input type="checkbox" value="Мебель"> Мебель</label>
+            <label class="pill"><input type="checkbox" value="Интернет"> Интернет</label>
+            <label class="pill"><input type="checkbox" value="Лифт"> Лифт</label>
+            <label class="pill"><input type="checkbox" value="Охрана"> Охрана</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col"><label>Lat</label><input id="aLat" placeholder="кликни по карте"></div>
+        <div class="col"><label>Lng</label><input id="aLng" placeholder="кликни по карте"></div>
+      </div>
+      <div id="adminMap" class="card"></div>
+
+      <div class="row">
+        <div class="col" style="flex:1">
+          <label>Фото</label>
+          <input type="file" id="aPhotos" multiple accept="image/*">
+          <div id="aGallery" class="gallery"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn btn-primary" onclick="saveObject()">Сохранить</button>
+        <button class="btn" onclick="resetForm()">Очистить</button>
+      </div>
+      <div class="note">Поля с * обязательны</div>
+    </div>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+    // Статичные справочники, чтобы было стабильно
+    const GROUPS = [{id:"g1", label:"Недвижимость"}];
+    const CATEGORIES = [
+      {id:"c1", groupId:"g1", label:"Квартира"},
+      {id:"c2", groupId:"g1", label:"Дом"},
+      {id:"c3", groupId:"g1", label:"Коммерция"},
+    ];
+    const STATUSES = [
+      {id:"s1", categoryId:"c1", label:"Аренда"},
+      {id:"s2", categoryId:"c1", label:"Продажа"},
+      {id:"s3", categoryId:"c2", label:"Аренда"},
+      {id:"s4", categoryId:"c2", label:"Продажа"},
+      {id:"s5", categoryId:"c3", label:"Аренда"},
+      {id:"s6", categoryId:"c3", label:"Продажа"},
+    ];
+
+    // Хранилище
+    let objects = JSON.parse(localStorage.getItem("objects_v185b")||"[]");
+    function persist(){ localStorage.setItem("objects_v185b", JSON.stringify(objects)); }
+
+    // Карта
+    const map = L.map("mapMain").setView([41.3111,69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {attribution:"© OpenStreetMap"}).addTo(map);
+    let markersLayer = L.layerGroup().addTo(map);
+
+    // Радиус поиска
+    let filterCenter = null;
+    let filterCircle = null;
+    map.on("click", e=>{
+      filterCenter = e.latlng;
+      const r = +($("fRadius").value||0);
+      if(r>0){
+        drawFilterCircle(filterCenter, r);
+      }
+    });
+    function drawFilterCircle(center, r){
+      if(filterCircle){ filterCircle.setLatLng(center); filterCircle.setRadius(r); }
+      else filterCircle = L.circle(center, {radius:r, color:"#2563eb"}).addTo(map);
+    }
+
+    // Карта админки
+    const adminMap = L.map("adminMap").setView([41.3111,69.2797], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {attribution:"© OpenStreetMap"}).addTo(adminMap);
+    let adminMarker = null;
+    adminMap.on("click", e=>{
+      $("aLat").value = e.latlng.lat.toFixed(6);
+      $("aLng").value = e.latlng.lng.toFixed(6);
+      if(adminMarker) adminMarker.setLatLng(e.latlng);
+      else adminMarker = L.marker(e.latlng).addTo(adminMap);
+    });
+
+    // Привязка селектов
+    function fillFilters(){
+      // фильтр
+      $("fGroup").innerHTML = `<option value="">Любая</option>` + GROUPS.map(g=>`<option value="${g.id}">${g.label}</option>`).join("");
+      $("fGroup").onchange = ()=>{
+        const gs = $("fGroup").value;
+        const cats = CATEGORIES.filter(c=>!gs || c.groupId===gs);
+        $("fCategory").innerHTML = `<option value="">Любая</option>` + cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join("");
+        $("fCategory").onchange();
+      };
+      $("fCategory").onchange = ()=>{
+        const cid = $("fCategory").value;
+        const sts = STATUSES.filter(s=>!cid || s.categoryId===cid);
+        $("fStatus").innerHTML = `<option value="">Любой</option>` + sts.map(s=>`<option value="${s.id}">${s.label}</option>`).join("");
+      };
+      $("fGroup").onchange();
+
+      // админка
+      $("aGroup").innerHTML = GROUPS.map(g=>`<option value="${g.id}">${g.label}</option>`).join("");
+      $("aGroup").onchange = ()=>{
+        const gs = $("aGroup").value;
+        const cats = CATEGORIES.filter(c=>c.groupId===gs);
+        $("aCategory").innerHTML = cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join("");
+        $("aCategory").onchange();
+      };
+      $("aCategory").onchange = ()=>{
+        const cid = $("aCategory").value;
+        const sts = STATUSES.filter(s=>s.categoryId===cid);
+        $("aStatus").innerHTML = sts.map(s=>`<option value="${s.id}">${s.label}</option>`).join("");
+      };
+      $("aGroup").onchange();
+
+      $("aStatus").addEventListener("change", ()=>{
+        // показывать aRentType только для статусов Аренда
+        const stLab = STATUSES.find(s=>s.id===$("aStatus").value)?.label || "";
+        $("aRentType").disabled = (stLab!=="Аренда");
+      });
+    }
+
+    // Фото
+    let photoFiles = []; // dataURL массив
+    $("aPhotos").addEventListener("change", ()=>{
+      const files=[...$("aPhotos").files];
+      files.forEach(f=>{
+        const fr=new FileReader();
+        fr.onload = e=>{
+          photoFiles.push(e.target.result);
+          const d=document.createElement("div"); d.className="thumb";
+          d.innerHTML = `<img src="${e.target.result}"><button class="del">×</button>`;
+          $("aGallery").appendChild(d);
+        };
+        fr.readAsDataURL(f);
+      });
+      $("aPhotos").value="";
+    });
+    $("aGallery").addEventListener("click", e=>{
+      const btn = e.target.closest(".del"); if(!btn) return;
+      const idx = [...$("aGallery").children].indexOf(btn.parentElement);
+      if(idx>-1) photoFiles.splice(idx,1);
+      btn.parentElement.remove();
+    });
+
+    function chip(label,val){
+      if(val==null || val==="" || (Array.isArray(val)&&!val.length)) return "";
+      return `<span class="chip">${label}: ${Array.isArray(val)? val.join(", ") : val}</span>`;
+    }
+  </script>
+  <script>
+    let editId = null;
+
+    function saveObject(){
+      const groupId = $("aGroup").value;
+      const categoryId = $("aCategory").value;
+      const statusId = $("aStatus").value;
+      const title = $("aTitle").value.trim();
+      const price = +$("aPrice").value;
+
+      if(!groupId || !categoryId || !statusId){ alert("Выбери группу/категорию/статус"); return; }
+      if(!title){ alert("Заполни заголовок"); return; }
+      if(!price){ alert("Укажи цену"); return; }
+
+      const rooms = $("aRooms").value ? +$("aRooms").value : null;
+      const area  = $("aArea").value ? +$("aArea").value : null;
+      const condition = $("aCondition").value || "";
+      const rentType  = $("aRentType").disabled ? "" : ($("aRentType").value || "");
+      const amenities = [...$("aAmenities").querySelectorAll("input:checked")].map(el=>el.value);
+      const lat = $("aLat").value ? +$("aLat").value : null;
+      const lng = $("aLng").value ? +$("aLng").value : null;
+
+      const obj = {
+        id: editId || uid(),
+        groupId, categoryId, statusId,
+        title, price, rooms, area, condition, rentType, amenities,
+        lat, lng,
+        photos: photoFiles.slice()
+      };
+
+      if(editId){
+        const i = objects.findIndex(x=>x.id===editId);
+        if(i>=0) objects[i] = obj;
+        editId = null;
+      } else {
+        objects.push(obj);
+      }
+      persist();
+      resetForm();
+      render(objects);
+    }
+
+    function editObject(id){
+      const o = objects.find(x=>x.id===id); if(!o) return;
+      editId = id;
+
+      $("aGroup").value = o.groupId; $("aGroup").onchange();
+      $("aCategory").value = o.categoryId; $("aCategory").onchange();
+      $("aStatus").value = o.statusId; $("aStatus").dispatchEvent(new Event("change"));
+
+      $("aTitle").value = o.title;
+      $("aPrice").value = o.price ?? "";
+      $("aRooms").value = o.rooms ?? "";
+      $("aArea").value  = o.area ?? "";
+      $("aCondition").value = o.condition ?? "";
+      $("aRentType").value  = o.rentType ?? "";
+      $("aRentType").disabled = (STATUSES.find(s=>s.id===o.statusId)?.label!=="Аренда");
+
+      $("aLat").value = o.lat ?? "";
+      $("aLng").value = o.lng ?? "";
+      if(o.lat!=null && o.lng!=null){
+        const ll = L.latLng(o.lat,o.lng);
+        if(adminMarker) adminMarker.setLatLng(ll); else adminMarker = L.marker(ll).addTo(adminMap);
+        adminMap.setView(ll, 14);
+      }
+
+      photoFiles = o.photos ? o.photos.slice() : [];
+      $("aGallery").innerHTML = "";
+      photoFiles.forEach(src=>{
+        const d=document.createElement("div"); d.className="thumb";
+        d.innerHTML = `<img src="${src}"><button class="del">×</button>`;
+        $("aGallery").appendChild(d);
+      });
+
+      window.scrollTo({top:document.querySelector("#adminMap").getBoundingClientRect().top + window.scrollY - 60, behavior:"smooth"});
+    }
+
+    function copyObject(id){
+      const o = objects.find(x=>x.id===id); if(!o) return;
+      const copy = {...o, id:uid(), title:o.title+" (копия)"};
+      objects.push(copy); persist(); render(objects);
+    }
+
+    function deleteObject(id){
+      if(!confirm("Удалить объявление?")) return;
+      objects = objects.filter(x=>x.id!==id);
+      persist(); render(objects);
+    }
+
+    function resetForm(){
+      editId=null;
+      ["aTitle","aPrice","aRooms","aArea","aLat","aLng"].forEach(id=>$(id).value="");
+      $("aCondition").value=""; $("aRentType").value="";
+      $("aGallery").innerHTML=""; photoFiles=[];
+      if(adminMarker){ adminMap.removeLayer(adminMarker); adminMarker=null; }
+    }
+
+    function render(list){
+      const res = $("results"); res.innerHTML="";
+      markersLayer.clearLayers();
+
+      list.forEach(o=>{
+        const path = [
+          GROUPS.find(g=>g.id===o.groupId)?.label,
+          CATEGORIES.find(c=>c.id===o.categoryId)?.label,
+          STATUSES.find(s=>s.id===o.statusId)?.label
+        ].filter(Boolean).join(" / ");
+
+        const photos = (o.photos||[]).slice(0,4).map(p=>`<img src="${p}">`).join("");
+
+        res.insertAdjacentHTML("beforeend", `
+          <div class="item" data-id="${o.id}">
+            <div class="hdr">
+              <b>${o.title}</b>
+              <span class="price">${o.price? o.price+" $" : ""}</span>
+            </div>
+            <div class="note">${path}</div>
+            <div class="gallery">${photos}</div>
+            <div class="row" style="margin-top:6px">
+              ${chip("Комнаты", o.rooms)} ${chip("Площадь", o.area)} ${chip("Состояние", o.condition)} ${chip("Тип аренды", o.rentType)}
+              ${chip("Удобства", (o.amenities||[]).join(", "))}
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button class="btn" onclick="editObject('${o.id}')">✏ Редактировать</button>
+              <button class="btn" onclick="copyObject('${o.id}')">📄 Копировать</button>
+              <button class="btn btn-danger" onclick="deleteObject('${o.id}')">🗑 Удалить</button>
+            </div>
+          </div>
+        `);
+
+        if(o.lat!=null && o.lng!=null){
+          const m = L.marker([o.lat,o.lng]).addTo(markersLayer);
+          m.bindPopup(`<b>${o.title}</b><br>${o.price?o.price+" $":""}<br>${path}`);
+        }
+      });
+    }
+
+    function applyFilters(){
+      const gid = $("fGroup").value;
+      const cid = $("fCategory").value;
+      const sid = $("fStatus").value;
+      const q = $("fQuery").value.trim().toLowerCase();
+
+      const priceMin = +($("fPriceMin").value||"") || -Infinity;
+      const priceMax = +($("fPriceMax").value||"") || Infinity;
+      const roomsMin = +($("fRoomsMin").value||"") || -Infinity;
+      const roomsMax = +($("fRoomsMax").value||"") || Infinity;
+      const areaMin  = +($("fAreaMin").value||"")  || -Infinity;
+      const areaMax  = +($("fAreaMax").value||"")  || Infinity;
+      const condition = $("fCondition").value;
+      const amenities = [...$("fAmenities").querySelectorAll("input:checked")].map(el=>el.value);
+
+      const r = +($("fRadius").value||0);
+
+      let list = objects.slice();
+      if(gid) list = list.filter(o=>o.groupId===gid);
+      if(cid) list = list.filter(o=>o.categoryId===cid);
+      if(sid) list = list.filter(o=>o.statusId===sid);
+      if(q)   list = list.filter(o=> (o.title||"").toLowerCase().includes(q));
+      list = list.filter(o=>{
+        const inPrice = (o.price??Infinity)>=priceMin && (o.price??-Infinity)<=priceMax;
+        const inRooms = (o.rooms??Infinity)>=roomsMin && (o.rooms??-Infinity)<=roomsMax;
+        const inArea  = (o.area??Infinity)>=areaMin  && (o.area??-Infinity)<=areaMax;
+        const inCond  = !condition || (o.condition===condition);
+        const inAmen  = amenities.every(a=> (o.amenities||[]).includes(a));
+        return inPrice && inRooms && inArea && inCond && inAmen;
+      });
+      if(r>0 && filterCenter){
+        list = list.filter(o=>{
+          if(o.lat==null || o.lng==null) return false;
+          return haversine(o.lat,o.lng, filterCenter.lat,filterCenter.lng) <= r;
+        });
+        drawFilterCircle(filterCenter, r);
+        map.setView(filterCenter, 13);
+      }
+      render(list);
+    }
+
+    function resetFilters(){
+      ["fGroup","fCategory","fStatus","fQuery","fPriceMin","fPriceMax","fRoomsMin","fRoomsMax","fAreaMin","fAreaMax","fCondition","fRadius"]
+        .forEach(id=>{ const el=$(id); if(el.tagName==="SELECT") el.value=""; else el.value=""; });
+      [...$("fAmenities").querySelectorAll("input:checked")].forEach(el=> el.checked=false);
+      filterCenter=null;
+      if(filterCircle){ map.removeLayer(filterCircle); filterCircle=null; }
+      render(objects);
+    }
+
+    function haversine(lat1,lng1,lat2,lng2){
+      const R=6371000;
+      const toRad = d => d*Math.PI/180;
+      const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+      return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    // init
+    fillFilters();
+    render(objects);
+  </script>
+</body>
+</html>
