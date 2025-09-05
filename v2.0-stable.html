@@ -186,17 +186,16 @@
     function persist(){ localStorage.setItem(LS_OBJECTS, JSON.stringify(objects)); }
     function persistTree(){ localStorage.setItem(LS_TREE, JSON.stringify(tree)); }
 
-    // ===== auth (простая)
+    // ===== auth
     function isAuthed(){ return localStorage.getItem(LS_AUTH)==="true"; }
     function doLogin(){
       const u = $("authUser").value.trim();
       const p = $("authPass").value.trim();
-      // простейшие креды (для прототипа): admin / 1234
       if(u==="admin" && p==="1234"){
         localStorage.setItem(LS_AUTH,"true");
         applyAuthUI();
       }else{
-        alert("Неверные логин/пароль (админ/1234)");
+        alert("Неверные логин/пароль (admin / 1234)");
       }
     }
     function doLogout(){
@@ -209,9 +208,14 @@
       $("authControls").classList.toggle("hidden", authed);
       $("authLogout").classList.toggle("hidden", !authed);
       $("adminWrap").classList.toggle("hidden", !authed);
+
+      // 👇 фикс: карта в админке перерисовывается
+      if(authed){
+        setTimeout(()=> adminMap.invalidateSize(), 300);
+      }
     }
 
-    // ===== map (cache-bust чтобы не зависеть от старого кеша)
+    // ===== map
     const TILE = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?cb=2025-09-05";
     const map = L.map("mapMain").setView([41.3111,69.2797], 12);
     L.tileLayer(TILE, { attribution:"© OpenStreetMap" }).addTo(map);
@@ -239,7 +243,7 @@
       else adminMarker = L.marker(e.latlng).addTo(adminMap);
     });
 
-    // ===== tree (бесконечная глубина)
+    // ===== tree
     function addRootNode(){
       const label = prompt("Название корневого узла:");
       if(!label) return;
@@ -255,7 +259,7 @@
       persistTree(); renderTreeAdmin(); renderFilterTree(); fillAdminNodeSelectors();
     }
     function removeNode(nodeId){
-      if(!confirm("Удалить узел и всех его потомков?")) return;
+      if(!confirm("Удалить узел и потомков?")) return;
       removeNodeRecursive(tree, nodeId);
       persistTree(); renderTreeAdmin(); renderFilterTree(); fillAdminNodeSelectors();
     }
@@ -326,24 +330,40 @@
       wrap.append(renderList(tree));
     }
 
-    // фильтр-дерево (чекбоксы)
+    // ===== фильтр (select вместо галочек)
     function renderFilterTree(){
-      const box = $("filterTree"); box.innerHTML="";
-      function render(arr){
-        const frag = document.createDocumentFragment();
-        for(const n of arr){
-          const lbl = document.createElement("label");
-          lbl.className="pill";
-          lbl.innerHTML = `<input type="checkbox" class="fNode" value="${n.id}"> ${(n.icon||"")}${n.label}`;
-          frag.append(lbl);
-          if(n.children?.length) frag.append(render(n.children));
-        }
-        return frag;
+      const box = $("filterTree"); 
+      box.innerHTML = "";
+
+      function buildSelect(levelNodes, level=0){
+        const sel = document.createElement("select");
+        sel.innerHTML = `<option value="">— выбери —</option>`;
+        levelNodes.forEach(n=>{
+          const opt = document.createElement("option");
+          opt.value = n.id;
+          opt.textContent = (n.icon||"") + n.label;
+          sel.appendChild(opt);
+        });
+
+        sel.addEventListener("change", ()=>{
+          // удаляем все селекты ниже
+          while(sel.nextSibling) sel.parentNode.removeChild(sel.nextSibling);
+
+          const node = findNodeById(sel.value);
+          if(node && node.children?.length){
+            sel.parentNode.appendChild(buildSelect(node.children, level+1));
+          }
+        });
+
+        return sel;
       }
-      box.append(render(tree));
+
+      if(tree.length){
+        box.appendChild(buildSelect(tree, 0));
+      }
     }
 
-    // селекторы в админ-форме: основная категория + чекбоксы дополнительных
+    // ===== селекторы в админке
     function fillAdminNodeSelectors(){
       const flat = flattenNodes();
       $("aPrimaryNode").innerHTML = `<option value="">—</option>` + flat.map(n=>`<option value="${n.id}">${(n.icon||"")}${getNodePathLabel(n.id)||n.label}</option>`).join("");
@@ -376,283 +396,170 @@
     });
   </script>
   <script>
-    // ===== modal (detail)
-    let modalIdx=0, modalPhotos=[], modalObj=null;
-    function openModal(obj){
-      modalObj=obj; modalPhotos=(obj.photos||[]).slice(); modalIdx=0;
-      const nodeChips = [obj.primaryNode, ...(obj.nodes||[])]
-        .filter(Boolean)
-        .map(id=>`<span class="chip">${getNodePathLabel(id)}</span>`).join("");
-
-      const slides = modalPhotos.length
-        ? modalPhotos.map(p=>`<img src="${p}">`).join("")
-        : `<div style="height:200px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:12px">Нет фото</div>`;
-
-      $("modalBody").innerHTML = `
-        <div class="hdr" style="margin-bottom:8px">
-          <div><b style="font-size:18px">${obj.title||"Объявление"}</b></div>
-          <div class="price">${obj.price? obj.price+" $" : ""}</div>
-        </div>
-        <div class="note" style="margin-bottom:6px">${nodeChips}</div>
-        <div class="slider">
-          <div class="slides" id="slides">${slides}</div>
-          ${modalPhotos.length>1?`<button class="prev" onclick="prevSlide()">‹</button><button class="next" onclick="nextSlide()">›</button>`:""}
-        </div>
-        <div class="row" style="gap:12px">
-          ${chip("Комнаты", obj.rooms)} ${chip("Площадь", obj.area)}
-        </div>
-        ${obj.lat!=null&&obj.lng!=null?`<div class="note" style="margin-top:10px">Координаты: ${obj.lat}, ${obj.lng}</div>`:""}
-        <div class="row" style="margin-top:12px">
-          <button class="btn" onclick="editObject('${obj.id}')">✏ Редактировать</button>
-          <button class="btn" onclick="copyObject('${obj.id}')">📄 Копировать</button>
-          <button class="btn btn-danger" onclick="deleteObject('${obj.id}'); closeModal()">🗑 Удалить</button>
-        </div>
-      `;
-      $("modal").style.display="flex"; updateSlides();
-    }
-    function closeModal(){ $("modal").style.display="none"; }
-    function updateSlides(){
-      const el=$("slides"); if(!el) return;
-      const w=el.firstElementChild? el.firstElementChild.getBoundingClientRect().width : 0;
-      el.style.transform=`translateX(${-modalIdx*w}px)`;
-    }
-    function prevSlide(){ if(!modalPhotos.length) return; modalIdx=(modalIdx-1+modalPhotos.length)%modalPhotos.length; updateSlides(); }
-    function nextSlide(){ if(!modalPhotos.length) return; modalIdx=(modalIdx+1)%modalPhotos.length; updateSlides(); }
-    $("modal").addEventListener("click", e=>{ if(e.target.id==="modal") closeModal(); });
-
-    // ===== chips helper
-    function chip(label,val){
-      if(val==null || val==="" || (Array.isArray(val)&&!val.length)) return "";
-      return `<span class="chip">${label}: ${Array.isArray(val)? val.join(", ") : val}</span>`;
-    }
-
-    // ===== CRUD
-    let editId=null;
-    function selectedExtraNodes(){ return [...document.querySelectorAll(".aNodeExtra:checked")].map(el=>el.value); }
-    function setExtraNodes(ids){ document.querySelectorAll(".aNodeExtra").forEach(el=> el.checked = ids.includes(el.value)); }
-
+    // ===== CRUD объявлений
     function saveObject(){
-      const title=$("aTitle").value.trim();
-      const price=+$("aPrice").value;
-      if(!title){ alert("Заполни заголовок"); return; }
-      if(!price){ alert("Укажи цену"); return; }
+      const title = $("aTitle").value.trim();
+      const price = +$("aPrice").value;
+      if(!title || !price){ alert("Заполните заголовок и цену"); return; }
 
-      const obj={
-        id: editId || uid(),
-        title, price,
-        rooms: $("aRooms").value? +$("aRooms").value : null,
-        area:  $("aArea").value? +$("aArea").value : null,
-        lat:   $("aLat").value? +$("aLat").value : null,
-        lng:   $("aLng").value? +$("aLng").value : null,
-        primaryNode: $("aPrimaryNode").value || "",
-        nodes: selectedExtraNodes(),
-        photos: photoFiles.slice()
+      const nodeId = $("aPrimaryNode").value;
+      const extras = [...document.querySelectorAll(".aNodeExtra:checked")].map(c=>c.value);
+
+      const obj = {
+        id: uid(),
+        title,
+        price,
+        rooms: +$("aRooms").value || null,
+        area: +$("aArea").value || null,
+        lat: $("aLat").value ? +$("aLat").value : null,
+        lng: $("aLng").value ? +$("aLng").value : null,
+        nodeId,
+        extras,
+        photos:[...photoFiles]
       };
-
-      if(editId){
-        const i = objects.findIndex(o=>o.id===editId);
-        if(i>=0) objects[i]=obj;
-        editId=null;
-      }else{
-        objects.push(obj);
-      }
+      objects.push(obj);
       persist();
-      // автофокус: если включён режим «метки только после Применить» — включим фильтр по категории нового объекта
-      if($("onlyAfterApply").checked){
-        // отметим primaryNode в чекбоксах фильтра
-        document.querySelectorAll("#filterTree .fNode").forEach(el=>{
-          if(el.value===obj.primaryNode) el.checked=true;
-        });
-        applyFilters(); // покажем только его категорию
-      }else{
-        render(objects, true); // сразу показать всё и маркеры
-      }
       resetForm();
-    }
-
-    function editObject(id){
-      const o=objects.find(x=>x.id===id); if(!o) return;
-      editId=o.id;
-      $("aTitle").value=o.title||"";
-      $("aPrice").value=o.price||"";
-      $("aRooms").value=o.rooms??"";
-      $("aArea").value=o.area??"";
-      $("aLat").value=o.lat??""; $("aLng").value=o.lng??"";
-      if(o.lat!=null&&o.lng!=null){
-        const ll=L.latLng(o.lat,o.lng);
-        if(adminMarker) adminMarker.setLatLng(ll); else adminMarker=L.marker(ll).addTo(adminMap);
-        adminMap.setView(ll, 14);
-      }
-      $("aPrimaryNode").value = o.primaryNode||"";
-      setExtraNodes(o.nodes||[]);
-      photoFiles = (o.photos||[]).slice();
-      $("aGallery").innerHTML = photoFiles.map(src=>`<div class="thumb"><img src="${src}"><button class="del">×</button></div>`).join("");
-      window.scrollTo({ top: $("adminWrap").getBoundingClientRect().top + window.scrollY - 40, behavior:"smooth" });
-    }
-
-    function copyObject(id){
-      const o=objects.find(x=>x.id===id); if(!o) return;
-      const copy={...o, id:uid(), title:(o.title||"")+" (копия)"};
-      objects.push(copy); persist(); render(objects, !$("onlyAfterApply").checked);
-    }
-
-    function deleteObject(id){
-      if(!confirm("Удалить объявление?")) return;
-      objects = objects.filter(x=>x.id!==id);
-      persist(); render(objects, !$("onlyAfterApply").checked);
-      closeModal();
+      renderResults();
     }
 
     function resetForm(){
-      editId=null;
-      ["aTitle","aPrice","aRooms","aArea","aLat","aLng"].forEach(id=> $(id).value="");
+      $("aTitle").value="";
+      $("aPrice").value="";
+      $("aRooms").value="";
+      $("aArea").value="";
+      $("aLat").value="";
+      $("aLng").value="";
       $("aPrimaryNode").value="";
-      setExtraNodes([]);
-      photoFiles=[]; $("aGallery").innerHTML="";
-      if(adminMarker){ adminMap.removeLayer(adminMarker); adminMarker=null; }
+      document.querySelectorAll(".aNodeExtra").forEach(c=>c.checked=false);
+      $("aGallery").innerHTML="";
+      photoFiles=[];
     }
 
-    // ===== render (список + карта)
-    function render(list, drawMarkers=false){
-      const res=$("results"); res.innerHTML="";
-      markersLayer.clearLayers();
-      list.forEach(o=>{
-        const first = (o.photos&&o.photos[0]) || "";
-        const more = Math.max((o.photos?.length||0)-1, 0);
-        const nodesHtml = [o.primaryNode, ...(o.nodes||[])]
-          .filter(Boolean)
-          .map(id=>`<span class="chip">${getNodePathLabel(id)}</span>`).join("");
+    // ===== фильтрация
+    function applyFilters(){
+      renderResults();
+    }
+    function resetFilters(){
+      $("fPriceMin").value="";
+      $("fPriceMax").value="";
+      $("fRoomsMin").value="";
+      $("fRoomsMax").value="";
+      $("fAreaMin").value="";
+      $("fAreaMax").value="";
+      $("fRadius").value="";
+      $("filterTree").querySelectorAll("select").forEach(s=>s.selectedIndex=0);
+      filterCenter=null; if(filterCircle){ map.removeLayer(filterCircle); filterCircle=null; }
+      renderResults();
+    }
 
-        const card=document.createElement("div"); card.className="item";
+    // ===== рендер списка и карты
+    function renderResults(){
+      const box=$("results"); box.innerHTML="";
+      markersLayer.clearLayers();
+      let list=objects;
+
+      // фильтр по цене
+      const pmin=+$("fPriceMin").value||0, pmax=+$("fPriceMax").value||Infinity;
+      list=list.filter(o=>o.price>=pmin && o.price<=pmax);
+
+      // фильтр по комнатам
+      const rmin=+$("fRoomsMin").value||0, rmax=+$("fRoomsMax").value||Infinity;
+      list=list.filter(o=>!o.rooms || (o.rooms>=rmin && o.rooms<=rmax));
+
+      // фильтр по площади
+      const amin=+$("fAreaMin").value||0, amax=+$("fAreaMax").value||Infinity;
+      list=list.filter(o=>!o.area || (o.area>=amin && o.area<=amax));
+
+      // фильтр по дереву (по последнему выбранному select)
+      const selects=$("filterTree").querySelectorAll("select");
+      let lastSel=null;
+      selects.forEach(s=>{ if(s.value) lastSel=s; });
+      if(lastSel){
+        const nodeId=lastSel.value;
+        list=list.filter(o=>o.nodeId===nodeId || o.extras.includes(nodeId));
+      }
+
+      // фильтр по радиусу
+      const r=+$("fRadius").value||0;
+      if(r>0 && filterCenter){
+        list=list.filter(o=>{
+          if(o.lat && o.lng){
+            const d=map.distance(filterCenter,{lat:o.lat,lng:o.lng});
+            return d<=r;
+          }
+          return false;
+        });
+      }
+
+      list.forEach(o=>{
+        const card=document.createElement("div");
+        card.className="item";
         card.innerHTML=`
           <div class="hdr">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:120px;height:90px;border:1px solid var(--b);border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;overflow:hidden">
-                ${ first ? `<img src="${first}" style="width:100%;height:100%;object-fit:cover">` : `<span class="note">Нет фото</span>` }
-              </div>
-              <div>
-                <div><b>${o.title||"Объявление"}</b></div>
-                <div class="price" style="margin-top:2px">${o.price? o.price+" $" : ""}</div>
-                <div class="note" style="margin-top:4px">${nodesHtml}</div>
-                ${more>0?`<div class="note" style="margin-top:2px">+ ещё ${more} фото</div>`:""}
-              </div>
-            </div>
-            <div style="display:flex;gap:6px">
-              <button class="btn" onclick="event.stopPropagation(); openModalById('${o.id}')">Открыть</button>
-              <button class="btn" onclick="event.stopPropagation(); editObject('${o.id}')">✏</button>
-              <button class="btn" onclick="event.stopPropagation(); copyObject('${o.id}')">📄</button>
-              <button class="btn btn-danger" onclick="event.stopPropagation(); deleteObject('${o.id}')">🗑</button>
-            </div>
+            <div><b>${o.title}</b></div>
+            <div class="price">${o.price}$</div>
+          </div>
+          <div class="note">${getNodePathLabel(o.nodeId)}</div>
+          ${o.photos?.length ? `<div class="gallery">${o.photos.slice(0,3).map(p=>`<img src="${p}">`).join("")}</div>` : ""}
+          <div class="row">
+            <button class="btn" onclick="openModal('${o.id}')">Открыть</button>
+            <button class="btn btn-danger" onclick="deleteObj('${o.id}')">Удалить</button>
           </div>
         `;
-        card.addEventListener("click", ()=> openModal(o));
-        res.appendChild(card);
+        box.appendChild(card);
 
-        if(drawMarkers && o.lat!=null && o.lng!=null){
+        if(o.lat && o.lng){
           const m=L.marker([o.lat,o.lng]).addTo(markersLayer);
-          m.bindPopup(`<b>${o.title||"Объявление"}</b><br>${o.price?o.price+" $":""}<br>${getNodePathLabel(o.primaryNode)}`);
+          m.bindPopup(`<b>${o.title}</b><br>${o.price}$`);
         }
       });
     }
-    function openModalById(id){ const o=objects.find(x=>x.id===id); if(o) openModal(o); }
 
-    // ===== фильтрация
-    function selectedFilterNodeIds(){
-      return [...document.querySelectorAll("#filterTree .fNode:checked")].map(el=>el.value);
+    // ===== модалка
+    function openModal(id){
+      const o=objects.find(x=>x.id===id); if(!o) return;
+      const mb=$("modalBody");
+      mb.innerHTML=`
+        <h2>${o.title}</h2>
+        <p><b>Цена:</b> ${o.price}$</p>
+        <p><b>Категория:</b> ${getNodePathLabel(o.nodeId)}</p>
+        ${o.rooms? `<p><b>Комнаты:</b> ${o.rooms}</p>`:""}
+        ${o.area? `<p><b>Площадь:</b> ${o.area} м²</p>`:""}
+        ${o.photos?.length ? `
+          <div class="slider">
+            <div class="slides" id="slides">${o.photos.map(p=>`<img src="${p}">`).join("")}</div>
+            <button class="prev" onclick="slideMove(-1)">‹</button>
+            <button class="next" onclick="slideMove(1)">›</button>
+          </div>` : ""}
+      `;
+      $("modal").style.display="flex";
+      slideIndex=0; updateSlide();
     }
-    function isObjectMatchNodes(obj, nodeIds){
-      if(!nodeIds.length) return true;
-      const set = new Set([obj.primaryNode, ...(obj.nodes||[])].filter(Boolean));
-      return nodeIds.some(id=> set.has(id)); // логика ANY
-    }
-    function haversine(lat1,lng1,lat2,lng2){
-      const R=6371000,toRad=d=>d*Math.PI/180;
-      const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
-      const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
-      return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-    }
-
-    function applyFilters(){
-      const nodeIds = selectedFilterNodeIds();
-      const priceMin = +($("fPriceMin").value||"") || -Infinity;
-      const priceMax = +($("fPriceMax").value||"") || Infinity;
-      const roomsMin = +($("fRoomsMin").value||"") || -Infinity;
-      const roomsMax = +($("fRoomsMax").value||"") || Infinity;
-      const areaMin  = +($("fAreaMin").value||"")  || -Infinity;
-      const areaMax  = +($("fAreaMax").value||"")  || Infinity;
-      const r        = +($("fRadius").value||0);
-
-      let list = objects.filter(o=> isObjectMatchNodes(o, nodeIds));
-      list = list.filter(o=>{
-        const inPrice=(o.price??Infinity)>=priceMin && (o.price??-Infinity)<=priceMax;
-        const inRooms=(o.rooms??Infinity)>=roomsMin && (o.rooms??-Infinity)<=roomsMax;
-        const inArea =(o.area ??Infinity)>=areaMin  && (o.area ??-Infinity)<=areaMax;
-        return inPrice && inRooms && inArea;
-      });
-
-      if(r>0 && filterCenter){
-        list = list.filter(o=>{
-          if(o.lat==null||o.lng==null) return false;
-          return haversine(o.lat,o.lng, filterCenter.lat, filterCenter.lng) <= r;
-        });
-        drawFilterCircle(filterCenter, r);
-        map.setView(filterCenter, 13);
-      }else{
-        if(filterCircle){ map.removeLayer(filterCircle); filterCircle=null; }
-      }
-
-      render(list, true); // рисуем маркеры для отфильтрованных
+    function closeModal(){ $("modal").style.display="none"; }
+    let slideIndex=0;
+    function slideMove(d){ slideIndex+=d; updateSlide(); }
+    function updateSlide(){
+      const slides=$("slides"); if(!slides) return;
+      const total=slides.children.length;
+      if(slideIndex<0) slideIndex=total-1;
+      if(slideIndex>=total) slideIndex=0;
+      slides.style.transform=`translateX(${-slideIndex*100}%)`;
     }
 
-    function resetFilters(){
-      ["fPriceMin","fPriceMax","fRoomsMin","fRoomsMax","fAreaMin","fAreaMax","fRadius"].forEach(id=> $(id).value="");
-      document.querySelectorAll("#filterTree .fNode:checked").forEach(el=> el.checked=false);
-      filterCenter=null;
-      if(filterCircle){ map.removeLayer(filterCircle); filterCircle=null; }
-      markersLayer.clearLayers();
-      render(objects, !$("onlyAfterApply").checked);
+    // ===== delete
+    function deleteObj(id){
+      if(!confirm("Удалить объект?")) return;
+      objects=objects.filter(o=>o.id!==id);
+      persist(); renderResults();
     }
 
     // ===== init
-    (function init(){
-      // стартовые узлы, если пусто
-      if(!Array.isArray(tree) || tree.length===0){
-        tree = [
-          { id:uid(), label:"Недвижимость", icon:"🏠", children:[
-            { id:uid(), label:"Квартира", icon:"🏢", children:[
-              { id:uid(), label:"Аренда", children:[
-                { id:uid(), label:"Посуточно" },
-                { id:uid(), label:"Долгосрочно" }
-              ]},
-              { id:uid(), label:"Продажа" }
-            ]},
-            { id:uid(), label:"Дом", icon:"🏡", children:[
-              { id:uid(), label:"Аренда" },
-              { id:uid(), label:"Продажа" }
-            ]},
-            { id:uid(), label:"Коммерция", icon:"🏬", children:[
-              { id:uid(), label:"Аренда" },
-              { id:uid(), label:"Продажа" }
-            ]}
-          ]}
-        ];
-        persistTree();
-      }
-
-      applyAuthUI();
-      renderTreeAdmin();
-      renderFilterTree();
-      fillAdminNodeSelectors();
-      render(objects, !$("onlyAfterApply").checked);
-
-      // делегирование удаления фото в админке (кнопки × на миниатюрах)
-      $("aGallery").addEventListener("click",(e)=>{
-        const btn=e.target.closest(".del"); if(!btn) return;
-        const idx=[...$("aGallery").children].indexOf(btn.parentElement);
-        if(idx>-1) photoFiles.splice(idx,1);
-        btn.parentElement.remove();
-      });
-    })();
+    renderTreeAdmin();
+    renderFilterTree();
+    fillAdminNodeSelectors();
+    renderResults();
+    applyAuthUI();
   </script>
 </body>
 </html>
