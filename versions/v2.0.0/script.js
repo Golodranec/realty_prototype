@@ -30,6 +30,7 @@ function initMap() {
         document.getElementById("lat").value = lat;
         document.getElementById("lng").value = lng;
 
+        // временный маркер
         if (tempMarker) {
             tempMarker.setLatLng([lat, lng]);
         } else {
@@ -60,7 +61,7 @@ function renderMarkers(filteredObjects) {
         `;
 
         if (obj.photos && obj.photos.length > 0) {
-            popupContent += `<img src="${obj.photos[0]}" width="150"><br>`;
+            popupContent += `<img src="${obj.photos[0]}" class="popup-photo"><br>`;
         }
 
         if (obj.contact) {
@@ -240,34 +241,25 @@ function saveNewObject(obj) {
     }
 
     document.getElementById("addForm").reset();
-    document.getElementById("preview").innerHTML = "";
+    document.getElementById("preview").innerHTML = ""; // очищаем превью
 }
 
-// ===== Превью фото до добавления =====
-document.addEventListener("DOMContentLoaded", () => {
-    const fileInput = document.getElementById("photo");
-    const preview = document.getElementById("preview");
+// ===== Превью фото в форме =====
+function previewPhotos(event) {
+    const previewDiv = document.getElementById("preview");
+    previewDiv.innerHTML = "";
 
-    fileInput.addEventListener("change", () => {
-        preview.innerHTML = "";
-        const files = fileInput.files;
-
-        for (let i = 0; i < files.length; i++) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const img = document.createElement("img");
-                img.src = e.target.result;
-                img.style.width = "100px";
-                img.style.height = "75px";
-                img.style.objectFit = "cover";
-                img.style.borderRadius = "6px";
-                img.style.boxShadow = "0 1px 4px rgba(0,0,0,0.2)";
-                preview.appendChild(img);
-            };
-            reader.readAsDataURL(files[i]);
-        }
-    });
-});
+    const files = event.target.files;
+    for (let i = 0; i < files.length; i++) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let img = document.createElement("img");
+            img.src = e.target.result;
+            previewDiv.appendChild(img);
+        };
+        reader.readAsDataURL(files[i]);
+    }
+}
 
 // ===== Запуск =====
 window.onload = () => {
