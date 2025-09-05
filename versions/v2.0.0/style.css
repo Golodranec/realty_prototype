@@ -134,9 +134,11 @@ button:hover {
 }
 
 /* Ограничение фото в попапе карты */
-.leaflet-popup-content img {
+.popup-photo {
   max-width: 200px;
   max-height: 150px;
   object-fit: cover;
   border-radius: 4px;
+  display: block;
+  margin: 5px 0;
 }
