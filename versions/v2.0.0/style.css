@@ -1,8 +1,9 @@
+/* База */
 body {
   font-family: Arial, sans-serif;
   background: #f4f6f9;
   margin: 0;
-  padding: 0;
+  color: #333;
 }
 
 h1 {
@@ -14,13 +15,28 @@ h1 {
 }
 
 .card {
-  background: white;
+  background: #fff;
   margin: 20px auto;
   padding: 20px;
   border-radius: 8px;
   max-width: 900px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  padding: 4px 8px;
+  background: #ffe8a3;
+  color: #6b4f00;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.hidden { display: none !important; }
 
 .form-grid {
   display: grid;
@@ -31,10 +47,23 @@ h1 {
 .form-actions {
   margin-top: 10px;
 }
+.form-actions.end {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
 
 .form-vertical label {
   display: block;
   margin: 10px 0;
+}
+
+input, select, button {
+  padding: 8px;
+  margin-top: 5px;
+  font-size: 14px;
+  border: 1px solid #d7d7d7;
+  border-radius: 6px;
 }
 
 button {
@@ -42,12 +71,14 @@ button {
   color: white;
   border: none;
   cursor: pointer;
-  border-radius: 4px;
-  padding: 6px 10px;
 }
-
-button:hover {
-  background: #45a049;
+button:hover { background: #45a049; }
+button.secondary {
+  background: #e0e0e0;
+  color: #222;
+}
+button.secondary:hover {
+  background: #d5d5d5;
 }
 
 #map {
@@ -56,22 +87,27 @@ button:hover {
   border-radius: 8px;
 }
 
-/* Карточки */
+/* Карточки результатов */
 .result-card {
-  border-bottom: 1px solid #ddd;
-  padding: 10px 0;
-  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding: 12px 0;
+  margin-bottom: 12px;
+}
+.result-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 /* Кнопка удаления */
 .delete-btn {
   background: #f44336;
-  margin-top: 10px;
 }
-
-.delete-btn:hover {
-  background: #d32f2f;
+.delete-btn:hover { background: #d32f2f; }
+.edit-btn {
+  background: #1976d2;
 }
+.edit-btn:hover { background: #1565c0; }
 
 /* Слайдер */
 .photo-slider {
@@ -80,14 +116,12 @@ button:hover {
   height: 160px;
   margin: 10px 0;
 }
-
 .photo-slider img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 6px;
 }
-
 .slider-btn {
   position: absolute;
   top: 50%;
@@ -100,10 +134,8 @@ button:hover {
   border-radius: 4px;
   font-size: 14px;
 }
-
 .slider-btn.prev { left: 5px; }
 .slider-btn.next { right: 5px; }
-
 .slider-counter {
   position: absolute;
   bottom: 5px;
@@ -116,16 +148,20 @@ button:hover {
 }
 
 /* Превью фото в форме */
+#preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 #preview img {
   width: 80px;
   height: 60px;
   object-fit: cover;
   border-radius: 4px;
-  margin: 5px;
   border: 1px solid #ccc;
 }
 
-/* Фото в попапе */
+/* Фото в попапе карты */
 .popup-photo {
   max-width: 200px !important;
   max-height: 140px !important;
